@@ -28,6 +28,10 @@ const pages = [
     menuTitle: "Trade-in",
     pageURL: "/Trade-in",
   },
+  {
+    menuTitle: "Admin",
+    pageURL: "/Admin",
+  },
 ];
 
 function Header() {

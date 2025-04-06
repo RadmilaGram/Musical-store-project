@@ -30,12 +30,12 @@ db.connect((err) => {
 });
 
 // Маршрут для получения данных с базы
-app.get('/api/producers', (req, res) => {
-  db.query('SELECT * FROM producer', (err, results) => {
+app.get('/api/brand', (req, res) => {
+  db.query('SELECT * FROM brand', (err, results) => {
     // console.log(results);
     if (err) {
       console.log('\x1b[31m' + err.message +'\x1b[0m');
-      res.status(500).json({ message: 'Ошибка получения производителей',  });
+      res.status(500).json({ message: 'Ошибка получения бренда',  });
       return;
     }
     res.json(results); // Отправляем данные на фронтенд
