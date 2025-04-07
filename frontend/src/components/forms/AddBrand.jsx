@@ -39,8 +39,8 @@ function AddBrandForm({ readBrands }) {
 
   return (
     <form onSubmit={submitFn}>
-      <Typography variant="h4" component="h4" color="main">
-        Add brand
+      <Typography variant="h4" component="h4">
+        Adding brand
       </Typography>
       <Stack spacing={2}>
         <Controller

@@ -23,7 +23,7 @@ function Admin() {
     for (const item in data) {
       result.push(data[item]["name"].toString());
     }
-    console.log(result);
+    // console.log(result);
 
     result.sort();
 
@@ -46,13 +46,18 @@ function Admin() {
 
   return (
     <>
-      <main>
+      <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
         <Typography variant="h2" component="h2">
           Admin
         </Typography>
+
         <AddBrandForm readBrands={readBrands} />
+
+        <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
+          Brands:
+        </Typography>
         {getData()}
-      </main>
+      </Box>
     </>
   );
 }
