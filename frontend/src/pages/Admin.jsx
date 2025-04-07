@@ -1,12 +1,23 @@
-import { useState } from "react";
-import { Button, Stack } from "@mui/material";
+import { useState, useEffect } from "react";
+import { Button, Stack, Paper, Box, Typography } from "@mui/material";
 import { fetchBrand } from "../utils/apiService/ApiService";
+import AddBrandForm from "../components/forms/AddBrand";
+import { styled } from "@mui/material/styles";
+
+const Item = styled(Paper)(({ theme }) => ({
+  backgroundColor: "#fff",
+  ...theme.typography.body2,
+  padding: theme.spacing(1),
+  textAlign: "center",
+  color: (theme.vars ?? theme).palette.text.secondary,
+  ...theme.applyStyles("dark", {
+    backgroundColor: "#1A2027",
+  }),
+}));
 
 function Admin() {
-  function clickReq() {
-    fetchBrand().then(setData).catch(console.error);
-    console.log(data);
-  }
+  const [data, setData] = useState();
+
   function getData() {
     let result = [];
     for (const item in data) {
@@ -14,24 +25,32 @@ function Admin() {
     }
     console.log(result);
 
+    result.sort();
+
     return (
       <Stack spacing={2}>
         {result.map((element) => {
-          return <h3>{element}</h3>;
+          return <Item key={element}>{element}</Item>;
         })}
       </Stack>
     );
   }
 
-  const [data, setData] = useState();
+  function readBrands() {
+    fetchBrand().then(setData).catch(console.error);
+  }
+
+  useEffect(() => {
+    readBrands();
+  }, []);
 
   return (
     <>
       <main>
-        <h1>Admin</h1>
-        <Button variant="contained" onClick={clickReq}>
-          Reuqest data
-        </Button>
+        <Typography variant="h2" component="h2">
+          Admin
+        </Typography>
+        <AddBrandForm readBrands={readBrands} />
         {getData()}
       </main>
     </>
