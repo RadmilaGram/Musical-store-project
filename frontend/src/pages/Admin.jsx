@@ -1,49 +1,10 @@
 import { useState, useEffect } from "react";
-import { Button, Stack, Paper, Box, Typography } from "@mui/material";
-import { fetchBrand } from "../utils/apiService/ApiService";
-import AddBrandForm from "../components/forms/AddBrand";
-import { styled } from "@mui/material/styles";
-
-const Item = styled(Paper)(({ theme }) => ({
-  backgroundColor: "#fff",
-  ...theme.typography.body2,
-  padding: theme.spacing(1),
-  textAlign: "center",
-  color: (theme.vars ?? theme).palette.text.secondary,
-  ...theme.applyStyles("dark", {
-    backgroundColor: "#1A2027",
-  }),
-}));
+import { Button, Stack, Paper, Box, Typography, Divider  } from "@mui/material";
+import { getBrand } from "../utils/apiService/ApiService";
+import AddBrandForm from "../components/forms/AddBrandForm";
+import AddProdTypeForm from "../components/forms/AddProdTypeForm";
 
 function Admin() {
-  const [data, setData] = useState();
-
-  function getData() {
-    let result = [];
-    for (const item in data) {
-      result.push(data[item]["name"].toString());
-    }
-    // console.log(result);
-
-    result.sort();
-
-    return (
-      <Stack spacing={2}>
-        {result.map((element) => {
-          return <Item key={element}>{element}</Item>;
-        })}
-      </Stack>
-    );
-  }
-
-  function readBrands() {
-    fetchBrand().then(setData).catch(console.error);
-  }
-
-  useEffect(() => {
-    readBrands();
-  }, []);
-
   return (
     <>
       <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
@@ -51,12 +12,15 @@ function Admin() {
           Admin
         </Typography>
 
-        <AddBrandForm readBrands={readBrands} />
+        <AddBrandForm/>
 
+        <Divider sx={{ mt: "30px", mb: "30px"}}/>
+        <AddProdTypeForm/>
+        {/* <AddProdTypeForm readBrands={readBrands} />
         <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
           Brands:
-        </Typography>
-        {getData()}
+        </Typography> */}
+        {/* {getData()} */}
       </Box>
     </>
   );

@@ -29,6 +29,8 @@ db.connect((err) => {
   console.log("Подключение к базе данных MySQL успешно");
 });
 
+// Reading part ---------------------------------------------------------------------------------------
+
 // Маршрут для получения данных с базы
 app.get("/api/brand", (req, res) => {
   db.query("SELECT * FROM brand", (err, results) => {
@@ -42,7 +44,20 @@ app.get("/api/brand", (req, res) => {
   });
 });
 
-// Маршрут для добавления пользователя
+app.get("/api/prodType", (req, res) => {
+  db.query("SELECT * FROM product_type", (err, results) => {
+    // console.log(results);
+    if (err) {
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      res.status(500).json({ message: "Ошибка получения бренда" });
+      return;
+    }
+    res.json(results); // Отправляем данные на фронтенд
+  });
+});
+
+// Adding part ---------------------------------------------------------------------------------------
+
 app.post("/api/addBrand", (req, res) => {
   const { brandName } = req.body;
   const query = "INSERT INTO brand (name) VALUES ( ?)";
@@ -59,6 +74,28 @@ app.post("/api/addBrand", (req, res) => {
       return;
     }
     res.status(201).json({ id: result.insertId, brandName });
+  });
+});
+
+app.post("/api/addProdType", (req, res) => {
+  const { productTypeName } = req.body;
+  const query = "INSERT INTO product_type (name) VALUES ( ?)";
+
+  db.query(query, [productTypeName], (err, result) => {
+    if (err) {
+      console.log(req.body);
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      err.message.includes("Duplicate")
+        ? res
+            .status(500)
+            .json({
+              message: "Ошибка добавления типа продукта",
+              error: "Duplicate",
+            })
+        : res.status(500).json({ message: "Ошибка добавления типа продукта" });
+      return;
+    }
+    res.status(201).json({ id: result.insertId, productTypeName });
   });
 });
 

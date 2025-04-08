@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 // import * as yup from "yup";
@@ -12,10 +13,38 @@ import {
 } from "@mui/material";
 
 import { addBrand_schema } from "../../utils/yupSchemas/AdminSchemas";
+import { addBrand, getBrand } from "../../utils/apiService/ApiService";
+import { Item } from "../customComponents";
 
-import { addBrand } from "../../utils/apiService/ApiService";
+function AddBrandForm() {
+  const [data, setData] = useState();
 
-function AddBrandForm({ readBrands }) {
+  function getData() {
+    let result = [];
+    for (const item in data) {
+      result.push(data[item]["name"].toString());
+    }
+    // console.log(result);
+
+    result.sort();
+
+    return (
+      <Stack spacing={2}>
+        {result.map((element) => {
+          return <Item key={element}>{element}</Item>;
+        })}
+      </Stack>
+    );
+  }
+
+  function readBrands() {
+    getBrand().then(setData).catch(console.error);
+  }
+
+  useEffect(() => {
+    readBrands();
+  }, []);
+
   const {
     control,
     handleSubmit,
@@ -38,24 +67,25 @@ function AddBrandForm({ readBrands }) {
   });
 
   return (
-    <form onSubmit={submitFn}>
-      <Typography variant="h4" component="h4">
-        Adding brand
-      </Typography>
-      <Stack spacing={2}>
-        <Controller
-          control={control}
-          name="brandName"
-          render={({ field }) => (
-            <TextField
-              label="Brand name"
-              {...field}
-              error={!!errors?.brandName}
-              helperText={errors?.brandName?.message}
-            />
-          )}
-        />
-        {/* <Controller
+    <>
+      <form onSubmit={submitFn}>
+        <Typography variant="h4" component="h4">
+          Adding brand
+        </Typography>
+        <Stack spacing={2}>
+          <Controller
+            control={control}
+            name="brandName"
+            render={({ field }) => (
+              <TextField
+                label="Brand name"
+                {...field}
+                error={!!errors?.brandName}
+                helperText={errors?.brandName?.message}
+              />
+            )}
+          />
+          {/* <Controller
           control={control}
           name="password"
           render={({ field }) => (
@@ -92,11 +122,16 @@ function AddBrandForm({ readBrands }) {
             />
           )}
         /> */}
-        <Button variant="contained" color="primary" type="submit">
-          Add
-        </Button>
-      </Stack>
-    </form>
+          <Button variant="contained" color="primary" type="submit">
+            Add
+          </Button>
+        </Stack>
+      </form>
+      <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
+        Brands:
+      </Typography>
+      {getData()}
+    </>
   );
 }
 
