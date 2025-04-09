@@ -65,9 +65,6 @@ function AddProdTypeForm() {
   return (
     <>
       <form onSubmit={submitFn}>
-        <Typography variant="h4" component="h4">
-          Adding product types
-        </Typography>
 
         <Stack spacing={2}>
           <Controller
