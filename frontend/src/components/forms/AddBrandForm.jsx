@@ -19,24 +19,6 @@ import { Item } from "../customComponents";
 function AddBrandForm() {
   const [data, setData] = useState();
 
-  function getData() {
-    let result = [];
-    for (const item in data) {
-      result.push(data[item]["name"].toString());
-    }
-    // console.log(result);
-
-    result.sort();
-
-    return (
-      <Stack spacing={2}>
-        {result.map((element) => {
-          return <Item key={element}>{element}</Item>;
-        })}
-      </Stack>
-    );
-  }
-
   function readBrands() {
     getBrand().then(setData).catch(console.error);
   }
@@ -127,7 +109,15 @@ function AddBrandForm() {
       <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
         Brands:
       </Typography>
-      {getData()}
+
+      <Stack spacing={2}>
+        {data &&
+          data.map((item) => (
+            <Item value={item.id} key={item.id}>
+              {item.name}
+            </Item>
+          ))}
+      </Stack>
     </>
   );
 }

@@ -65,7 +65,6 @@ function AddProdTypeForm() {
   return (
     <>
       <form onSubmit={submitFn}>
-
         <Stack spacing={2}>
           <Controller
             control={control}
@@ -87,7 +86,15 @@ function AddProdTypeForm() {
       <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
         Product types:
       </Typography>
-      {getData()}
+
+      <Stack spacing={2}>
+        {data &&
+          data.map((item) => (
+            <Item value={item.id} key={item.id}>
+              {item.name}
+            </Item>
+          ))}
+      </Stack>
     </>
   );
 }

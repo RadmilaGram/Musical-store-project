@@ -49,7 +49,19 @@ app.get("/api/prodType", (req, res) => {
     // console.log(results);
     if (err) {
       console.log("\x1b[31m" + err.message + "\x1b[0m");
-      res.status(500).json({ message: "Ошибка получения бренда" });
+      res.status(500).json({ message: "Ошибка получения типа продукта" });
+      return;
+    }
+    res.json(results); // Отправляем данные на фронтенд
+  });
+});
+
+app.get("/api/prodStatus", (req, res) => {
+  db.query("SELECT * FROM product_status", (err, results) => {
+    // console.log(results);
+    if (err) {
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      res.status(500).json({ message: "Ошибка получения статуса продукта" });
       return;
     }
     res.json(results); // Отправляем данные на фронтенд

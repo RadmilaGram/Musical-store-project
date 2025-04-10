@@ -26,6 +26,17 @@ export const getProdType = async () => {
   }
 };
 
+// read all product type
+export const getProdSatus = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/api/prodStatus`);
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при получении статуса продукта:", error);
+    throw error;
+  }
+};
+
 // Adding part ---------------------------------------------------------------------------------------
 
 // add Brand
