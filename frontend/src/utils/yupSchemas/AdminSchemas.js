@@ -14,3 +14,18 @@ export const addBrand_schema = yup.object().shape({
 export const addProdType_schema = yup.object().shape({
   productTypeName: yup.string().min(2, "less than 2 words").required(),
 });
+
+export const addProduct_schema = yup.object().shape({
+  name: yup.string().min(2, "less than 2 words").required(),
+  price: yup
+    .number()
+    .test(
+      "is-decimal",
+      "invalid decimal",
+      (value) => (value + "").match(/^\d*\.{1}\d*$/) && value > 0
+    ),
+  brandId: yup.number().required(),
+  statusId: yup.number().required(),
+  typeId: yup.number().required(),
+  img: yup.mixed().required(),
+});

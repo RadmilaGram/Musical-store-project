@@ -4,6 +4,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 // import * as yup from "yup";
 
 import {
+  Box,
   Button,
   Stack,
   TextField,
@@ -18,7 +19,7 @@ import {
 
 import { Textarea } from "@mui/joy";
 
-import { addBrand_schema } from "../../utils/yupSchemas/AdminSchemas";
+import { addProduct_schema } from "../../utils/yupSchemas/AdminSchemas";
 import {
   getBrand,
   getProdType,
@@ -31,7 +32,6 @@ function AddProductForm() {
   const [brands, setBrands] = useState();
   const [types, setTypes] = useState();
   const [statuses, setStatuses] = useState();
-  const [typeId, setTypeId] = useState("");
 
   function readBrands() {
     getBrand().then(setBrands).catch(console.error);
@@ -66,7 +66,7 @@ function AddProductForm() {
       statusId: "",
       typeId: "",
     },
-    // resolver: yupResolver(addBrand_schema),
+    resolver: yupResolver(addProduct_schema),
   });
   const submitFn = handleSubmit(async (data) => {
     console.log(data);
@@ -198,7 +198,8 @@ function AddProductForm() {
             control={control}
             defaultValue={null}
             render={({ field }) => (
-              <div>
+              <Box 
+              {...field}>
                 <input
                   type="file"
                   accept="image/*"
@@ -214,7 +215,10 @@ function AddProductForm() {
                 {field.value && (
                   <Typography style={{ marginTop: 8 }}>Selected file: {field.value.name}</Typography>
                 )}
-              </div>
+                {/* {!field.value && (
+                  <Typography style={{ marginTop: 8 }}>Image is required</Typography>
+                )} */}
+              </Box>
             )}
           />
 
@@ -259,7 +263,6 @@ function AddProductForm() {
             variant="contained"
             color="primary"
             type="submit"
-            // onClick={(event)=>console.log(event.target)}
           >
             Add
           </Button>
