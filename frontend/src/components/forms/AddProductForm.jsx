@@ -23,6 +23,7 @@ import {
   getBrand,
   getProdType,
   getProdSatus,
+  addProduct,
 } from "../../utils/apiService/ApiService";
 import { Item } from "../customComponents";
 
@@ -69,9 +70,10 @@ function AddProductForm() {
   });
   const submitFn = handleSubmit(async (data) => {
     console.log(data);
-    // await addBrand(data);
+
+    await addProduct(data);
     // await readBrands();
-    // reset();
+    reset();
   });
 
   return (
@@ -191,6 +193,31 @@ function AddProductForm() {
               />
             )}
           />
+          <Controller
+            name="img"
+            control={control}
+            defaultValue={null}
+            render={({ field }) => (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="product-image"
+                  style={{ display: 'none' }} // скрыть оригинальный input
+                  onChange={(e) => field.onChange(e.target.files[0])}
+                />
+                <label htmlFor="product-image">
+                  <Button variant="outlined" component="span">
+                    Upload Image
+                  </Button>
+                </label>
+                {field.value && (
+                  <Typography style={{ marginTop: 8 }}>Selected file: {field.value.name}</Typography>
+                )}
+              </div>
+            )}
+          />
+
           {/* <Controller
           control={control}
           name="password"
@@ -238,10 +265,6 @@ function AddProductForm() {
           </Button>
         </Stack>
       </form>
-      <Typography variant="h4" component="h4" sx={{ mt: "30px" }}>
-        Brands:
-      </Typography>
-      {/* {getData()} */}
     </>
   );
 }

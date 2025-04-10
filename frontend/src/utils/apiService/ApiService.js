@@ -40,9 +40,9 @@ export const getProdSatus = async () => {
 // Adding part ---------------------------------------------------------------------------------------
 
 // add Brand
-export const addBrand = async (brandName) => {
+export const addBrand = async (formData ) => {
   try {
-    const response = await axios.post(`${API_URL}/api/addBrand`, brandName);
+    const response = await axios.post(`${API_URL}/api/addBrand`, formData );
     return response.data;
   } catch (error) {
     console.error("Ошибка при добавлении бренда:", error);
@@ -51,9 +51,22 @@ export const addBrand = async (brandName) => {
 };
 
 // add product type
-export const addProdType = async (brandName) => {
+export const addProdType = async (formData ) => {
   try {
-    const response = await axios.post(`${API_URL}/api/addProdType`, brandName);
+    const response = await axios.post(`${API_URL}/api/addProdType`, formData );
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при добавлении типа продукта:", error);
+    throw error;
+  }
+};
+
+// add product 
+export const addProduct = async (formData ) => {
+  try {
+    const response = await axios.post(`${API_URL}/api/addProduct`, formData,{
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   } catch (error) {
     console.error("Ошибка при добавлении типа продукта:", error);

@@ -1,15 +1,27 @@
 const express = require("express");
+const multer = require("multer");
+const path = require("path");
 const mysql = require("mysql2");
 const cors = require("cors");
+const fs = require("fs");
 
-// Инициализация Express
-const app = express();
+const app = express(); // Инициализация Express
+app.use(cors()); // Настроим CORS для разрешения запросов с фронтенда
+app.use(express.json()); // Парсим JSON-данные из запросов
+app.use("/uploads", express.static("uploads")); // доступ к изображениям
 
-// Настроим CORS для разрешения запросов с фронтенда
-app.use(cors());
+// Хранилище для изображений
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // папка для файлов
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + path.extname(file.originalname);
+    cb(null, uniqueName);
+  },
+});
 
-// Парсим JSON-данные из запросов
-app.use(express.json());
+const upload = multer({ storage });
 
 // Подключение к базе данных MySQL
 const db = mysql.createConnection({
@@ -98,17 +110,35 @@ app.post("/api/addProdType", (req, res) => {
       console.log(req.body);
       console.log("\x1b[31m" + err.message + "\x1b[0m");
       err.message.includes("Duplicate")
-        ? res
-            .status(500)
-            .json({
-              message: "Ошибка добавления типа продукта",
-              error: "Duplicate",
-            })
+        ? res.status(500).json({
+            message: "Ошибка добавления типа продукта",
+            error: "Duplicate",
+          })
         : res.status(500).json({ message: "Ошибка добавления типа продукта" });
       return;
     }
     res.status(201).json({ id: result.insertId, productTypeName });
   });
+});
+
+app.post('/api/addProduct', upload.single('img'), (req, res) => {
+  const { name, description, img, price ,brandId, statusId, typeId} = req.body;
+  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+
+  const query = "INSERT INTO product (name, description, img, price, brand, status, type) VALUES ( ?, ?, ?, ?, ?, ?, ?)";
+
+  db.query(
+      query,
+      [name, description, image_url, price ,brandId, statusId, typeId],
+      (err, result) => {
+          if (err) {
+              console.log("\x1b[31m" + err.message + "\x1b[0m");
+              res.status(500).json({ error: 'Ошибка сервера' });
+          } else {
+              res.json({ id: result.insertId, name, image_url });
+          }
+      }
+  );
 });
 
 // Запуск сервера
