@@ -22,7 +22,7 @@ export const addProduct_schema = yup.object().shape({
     .test(
       "is-decimal",
       "invalid decimal",
-      (value) => (value + "").match(/^\d*\.{1}\d*$/) && value > 0
+      (value) =>  value > 0
     ),
   brandId: yup.number().required(),
   statusId: yup.number().required(),
