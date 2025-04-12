@@ -32,9 +32,14 @@ const FileUploadField = ({
           </label>
 
           {field.value && (
-            <Typography sx={{ mt: 1 }}>
-              Selected file: {field.value.name}
-            </Typography>
+             <Box sx={{ mt: 1 }}>
+             <Typography>Selected: {field.value.name}</Typography>
+             <img
+               src={URL.createObjectURL(field.value)}
+               alt="preview"
+               style={{ marginTop: 8, maxHeight: 300, borderRadius: 8 }}
+             />
+           </Box>
           )}
 
           {fieldState.error && (
