@@ -1,18 +1,9 @@
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
 
-import {
-  Button,
-  Stack,
-  TextField,
-} from "@mui/material";
+import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 
-import { Textarea } from "@mui/joy";
-
-import {
-  addProduct,
-} from "../../utils/apiService/ApiService";
+import { addProduct } from "../../utils/apiService/ApiService";
 
 import { useBrands } from "../../hooks/useBrands";
 import { useProductTypes } from "../../hooks/useProductTypes";
@@ -22,7 +13,6 @@ import FileUploadField from "../../components/formFields/FileUploadField";
 import SelectField from "../../components/formFields/SelectField";
 
 function AddProductForm() {
-
   const brands = useBrands();
   const types = useProductTypes();
   const statuses = useStatuses();
@@ -84,12 +74,15 @@ function AddProductForm() {
           <Controller
             control={control}
             name="description"
-            render={({ field }) => (
-              <Textarea
-                label="description"
+            render={({ field, fieldState }) => (
+              <TextField
                 {...field}
-                error={!!errors?.description}
-                placeholder="Description"
+                label="Description"
+                multiline
+                minRows={3}
+                fullWidth
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
               />
             )}
           />
@@ -112,11 +105,7 @@ function AddProductForm() {
             label="Upload Image"
             accept="image/*"
           />
-          <Button
-            variant="contained"
-            color="primary"
-            type="submit"
-          >
+          <Button variant="contained" color="primary" type="submit">
             Add
           </Button>
         </Stack>
