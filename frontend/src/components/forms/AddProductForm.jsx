@@ -13,8 +13,8 @@ import FileUploadField from "../../components/formFields/FileUploadField";
 import SelectField from "../../components/formFields/SelectField";
 
 function AddProductForm() {
-  const brands = useBrands();
-  const types = useProductTypes();
+  const { brands } = useBrands();
+  const { types } = useProductTypes();
   const statuses = useStatuses();
 
   const {

@@ -1,48 +1,15 @@
-import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 
-import {
-  Button,
-  Stack,
-  TextField,
-  Typography,
-  FormControlLabel,
-  Checkbox,
-} from "@mui/material";
+import { Button, Stack, TextField, Typography } from "@mui/material";
 
+import { useProductTypes } from "../../hooks/useProductTypes";
 import { addProdType_schema } from "../../utils/yupSchemas/AdminSchemas";
-import { addProdType, getProdType } from "../../utils/apiService/ApiService";
+import { addProdType } from "../../utils/apiService/ApiService";
 import { Item } from "../customComponents";
 
 function AddProdTypeForm() {
-  const [data, setData] = useState();
-
-  function getData() {
-    let result = [];
-    for (const item in data) {
-      result.push(data[item]["name"].toString());
-    }
-    // console.log(result);
-
-    result.sort();
-
-    return (
-      <Stack spacing={2}>
-        {result.map((element) => {
-          return <Item key={element}>{element}</Item>;
-        })}
-      </Stack>
-    );
-  }
-
-  function readProdTypes() {
-    getProdType().then(setData).catch(console.error);
-  }
-
-  useEffect(() => {
-    readProdTypes();
-  }, []);
+  const { types, fetchProdType } = useProductTypes();
 
   const {
     control,
@@ -58,7 +25,7 @@ function AddProdTypeForm() {
   const submitFn = handleSubmit(async (data) => {
     console.log(data);
     await addProdType(data);
-    await readProdTypes();
+    await fetchProdType();
     reset();
   });
 
@@ -88,8 +55,8 @@ function AddProdTypeForm() {
       </Typography>
 
       <Stack spacing={2}>
-        {data &&
-          data.map((item) => (
+        {types &&
+          types.map((item) => (
             <Item value={item.id} key={item.id}>
               {item.name}
             </Item>

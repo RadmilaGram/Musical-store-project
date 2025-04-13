@@ -4,9 +4,13 @@ import { getBrand } from "../utils/apiService/ApiService";
 export const useBrands = () => {
   const [brands, setBrands] = useState([]);
 
-  useEffect(() => {
+  const fetchBrands = () => {
     getBrand().then(setBrands).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchBrands();
   }, []);
 
-  return brands;
+  return { brands, fetchBrands };
 };
