@@ -54,7 +54,7 @@ function AddSpecialFieldForm() {
           <SelectField
             control={control}
             name="specialFieldDT"
-            label="Type"
+            label="Special field datatype"
             options={specialFieldDT}
             error={errors?.specialFieldDT}
           />

@@ -85,7 +85,9 @@ app.get("/api/SpecialFieldDT", (req, res) => {
     // console.log(results);
     if (err) {
       console.log("\x1b[31m" + err.message + "\x1b[0m");
-      res.status(500).json({ message: "Ошибка получения типа данных специальных полей" });
+      res
+        .status(500)
+        .json({ message: "Ошибка получения типа данных специальных полей" });
       return;
     }
     res.json(results); // Отправляем данные на фронтенд
@@ -102,6 +104,37 @@ app.get("/api/SpecialField", (req, res) => {
     }
     res.json(results); // Отправляем данные на фронтенд
   });
+});
+
+app.get("/api/SpecialFieldWithDefaultValues", (req, res) => {
+  db.query(
+    "SELECT * FROM special_field where datatype = (select id from special_field_datatype where name = 'string')",
+    (err, results) => {
+      // console.log(results);
+      if (err) {
+        console.log("\x1b[31m" + err.message + "\x1b[0m");
+        res.status(500).json({ message: "Ошибка получения специальных полей" });
+        return;
+      }
+      res.json(results); // Отправляем данные на фронтенд
+    }
+  );
+});
+
+app.get("/api/SpecialFieldValues", (req, res) => {
+  const { fieldID } = req.query;
+  db.query(
+    "SELECT * FROM special_field_values where field_id = '" + fieldID + "'",
+    (err, results) => {
+      // console.log(results);
+      if (err) {
+        console.log("\x1b[31m" + err.message + "\x1b[0m");
+        res.status(500).json({ message: "Ошибка получения специальных полей" });
+        return;
+      }
+      res.json(results); // Отправляем данные на фронтенд
+    }
+  );
 });
 
 // Adding part ---------------------------------------------------------------------------------------
@@ -145,23 +178,24 @@ app.post("/api/addProdType", (req, res) => {
   });
 });
 
-app.post('/api/addProduct', upload.single('img'), (req, res) => {
-  const { name, description, img, price ,brandId, statusId, typeId} = req.body;
+app.post("/api/addProduct", upload.single("img"), (req, res) => {
+  const { name, description, img, price, brandId, statusId, typeId } = req.body;
   const image_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-  const query = "INSERT INTO product (name, description, img, price, brand, status, type) VALUES ( ?, ?, ?, ?, ?, ?, ?)";
+  const query =
+    "INSERT INTO product (name, description, img, price, brand, status, type) VALUES ( ?, ?, ?, ?, ?, ?, ?)";
 
   db.query(
-      query,
-      [name, description, image_url, price ,brandId, statusId, typeId],
-      (err, result) => {
-          if (err) {
-              console.log("\x1b[31m" + err.message + "\x1b[0m");
-              res.status(500).json({ error: 'Ошибка сервера' });
-          } else {
-              res.json({ id: result.insertId, name, image_url });
-          }
+    query,
+    [name, description, image_url, price, brandId, statusId, typeId],
+    (err, result) => {
+      if (err) {
+        console.log("\x1b[31m" + err.message + "\x1b[0m");
+        res.status(500).json({ error: "Ошибка сервера" });
+      } else {
+        res.json({ id: result.insertId, name, image_url });
       }
+    }
   );
 });
 
@@ -178,10 +212,35 @@ app.post("/api/addSpecialField", (req, res) => {
             message: "Ошибка добавления специальных полей",
             error: "Duplicate",
           })
-        : res.status(500).json({ message: "Ошибка добавления специальных полей" });
+        : res
+            .status(500)
+            .json({ message: "Ошибка добавления специальных полей" });
       return;
     }
     res.status(201).json({ id: result.insertId, specialFieldName });
+  });
+});
+
+app.post("/api/addSpecialFieldValue", (req, res) => {
+  const { value, specialFieldSTR } = req.body;
+  const query =
+    "INSERT INTO special_field_values ( value, field_id) VALUES ( ?, ? )";
+
+  db.query(query, [value, specialFieldSTR], (err, result) => {
+    if (err) {
+      console.log(req.body);
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      err.message.includes("Duplicate")
+        ? res.status(500).json({
+            message: "Ошибка добавления специальных полей",
+            error: "Duplicate",
+          })
+        : res
+            .status(500)
+            .json({ message: "Ошибка добавления специальных полей" });
+      return;
+    }
+    res.status(201).json({ id: result.insertId, specialFieldName: value });
   });
 });
 

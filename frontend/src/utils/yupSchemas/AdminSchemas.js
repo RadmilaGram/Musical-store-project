@@ -24,6 +24,11 @@ export const addProduct_schema = yup.object().shape({
 });
 
 export const addSpecialField_schema = yup.object().shape({
-    specialFieldName: yup.string().min(2, "less than 2 words").required(),
-    specialFieldDT: yup.number().required(),
-  });
+  specialFieldName: yup.string().min(2, "less than 2 words").required(),
+  specialFieldDT: yup.number().required(),
+});
+
+export const addSpecialFieldDefaultValue_schema = yup.object().shape({
+  value: yup.string().required(),
+  specialFieldSTR: yup.number().required(),
+});
