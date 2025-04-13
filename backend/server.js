@@ -137,6 +137,24 @@ app.get("/api/SpecialFieldValues", (req, res) => {
   );
 });
 
+app.get("/api/TypeSpecialFields", (req, res) => {
+  const { typeID } = req.query;
+  db.query(
+    "SELECT * FROM product_type_special_fields where type_id = '" +
+      typeID +
+      "'",
+    (err, results) => {
+      // console.log(results);
+      if (err) {
+        console.log("\x1b[31m" + err.message + "\x1b[0m");
+        res.status(500).json({ message: "Ошибка получения специальных полей" });
+        return;
+      }
+      res.json(results); // Отправляем данные на фронтенд
+    }
+  );
+});
+
 // Adding part ---------------------------------------------------------------------------------------
 
 app.post("/api/addBrand", (req, res) => {
@@ -241,6 +259,29 @@ app.post("/api/addSpecialFieldValue", (req, res) => {
       return;
     }
     res.status(201).json({ id: result.insertId, specialFieldName: value });
+  });
+});
+
+app.post("/api/addSpecialFieldToProductType", (req, res) => {
+  const { productTypeSF, specialFieldPT } = req.body;
+  const query =
+    "INSERT INTO product_type_special_field ( type_id, spec_fild_id) VALUES ( ?, ? )";
+
+  db.query(query, [productTypeSF, specialFieldPT], (err, result) => {
+    if (err) {
+      console.log(req.body);
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      err.message.includes("Duplicate")
+        ? res.status(500).json({
+            message: "Ошибка добавления специальных полей",
+            error: "Duplicate",
+          })
+        : res
+            .status(500)
+            .json({ message: "Ошибка добавления специальных полей" });
+      return;
+    }
+    res.status(201).json({ id: result.insertId });
   });
 });
 

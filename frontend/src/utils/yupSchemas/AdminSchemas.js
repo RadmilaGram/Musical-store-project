@@ -32,3 +32,8 @@ export const addSpecialFieldDefaultValue_schema = yup.object().shape({
   value: yup.string().required(),
   specialFieldSTR: yup.number().required(),
 });
+
+export const addSpecialFieldToProductType_schema = yup.object().shape({
+  productTypeSF: yup.number().required(),
+  specialFieldPT: yup.number().required(),
+});

@@ -9,6 +9,7 @@ import AddProdTypeForm from "../components/forms/AddProdTypeForm";
 import AddProductForm from "../components/forms/AddProductForm";
 import AddSpecialFieldForm from "../components/forms/AddSpecialFieldForm";
 import AddSpecialFieldDefaultValueForm from "../components/forms/AddSpecialFieldDefaultValueForm";
+import AddSpecialFieldToProductType from "../components/forms/AddSpecialFieldToProductType";
 
 function Admin() {
   return (
@@ -44,6 +45,20 @@ function Admin() {
           </AccordionSummary>
           <AccordionDetails>
             <AddProdTypeForm />
+          </AccordionDetails>
+        </Accordion>
+        <Accordion>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel2-content"
+            id="panel2-header"
+          >
+            <Typography variant="h4" component="h4">
+              Adding special field to product type
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <AddSpecialFieldToProductType />
           </AccordionDetails>
         </Accordion>
         <Accordion>

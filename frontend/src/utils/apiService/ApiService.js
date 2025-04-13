@@ -85,6 +85,19 @@ export const getSpecialFieldValues = async (fieldID) => {
   }
 };
 
+// read all special fields
+export const getTypeSpecialFields = async (typeID) => {
+  try {
+    const response = await axios.get(`${API_URL}/api/TypeSpecialFields`, {
+      params: { typeID },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при получении специальных полей:", error);
+    throw error;
+  }
+};
+
 // Adding part ---------------------------------------------------------------------------------------
 
 // add Brand
@@ -122,7 +135,6 @@ export const addProduct = async (formData) => {
   }
 };
 
-// add product
 export const addSpecialField = async (formData) => {
   try {
     const response = await axios.post(
@@ -136,7 +148,6 @@ export const addSpecialField = async (formData) => {
   }
 };
 
-// add product
 export const addSpecialFieldValue = async (formData) => {
   try {
     const response = await axios.post(
@@ -149,3 +160,29 @@ export const addSpecialFieldValue = async (formData) => {
     throw error;
   }
 };
+
+export const addSpecialFieldToProductType = async (formData) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/api/addSpecialFieldToProductType`,
+      formData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при добавлении специального поля:", error);
+    throw error;
+  }
+};
+
+// export const addProductTypeSpecialFields = async (formData) => {
+//   try {
+//     const response = await axios.post(
+//       `${API_URL}/api/addSpecialFieldToProductType`,
+//       formData
+//     );
+//     return response.data;
+//   } catch (error) {
+//     console.error("Ошибка при добавлении специального поля:", error);
+//     throw error;
+//   }
+// };
