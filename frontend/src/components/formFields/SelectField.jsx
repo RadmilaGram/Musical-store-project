@@ -17,7 +17,7 @@ const SelectField = ({ control, name, label, options = [], error }) => (
           <InputLabel id={`${name}-label`}>{label}</InputLabel>
           <Select labelId={`${name}-label`} label={label} {...field}>
             {options.map((option) => (
-              <MenuItem key={option.id} value={option.id}>
+              <MenuItem key={name + option.id} value={option.id}>
                 {option.name}
               </MenuItem>
             ))}

@@ -7,6 +7,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddBrandForm from "../components/forms/AddBrandForm";
 import AddProdTypeForm from "../components/forms/AddProdTypeForm";
 import AddProductForm from "../components/forms/AddProductForm";
+import AddSpecialFieldForm from "../components/forms/AddSpecialFieldForm";
 
 function Admin() {
   return (
@@ -16,7 +17,7 @@ function Admin() {
           Admin
         </Typography>
 
-        <Accordion >
+        <Accordion>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
             aria-controls="panel1-content"
@@ -42,6 +43,20 @@ function Admin() {
           </AccordionSummary>
           <AccordionDetails>
             <AddProdTypeForm />
+          </AccordionDetails>
+        </Accordion>
+        <Accordion>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel2-content"
+            id="panel2-header"
+          >
+            <Typography variant="h4" component="h4">
+              Adding special field
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <AddSpecialFieldForm />
           </AccordionDetails>
         </Accordion>
         <Accordion>

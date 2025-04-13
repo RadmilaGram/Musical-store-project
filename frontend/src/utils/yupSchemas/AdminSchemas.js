@@ -22,3 +22,8 @@ export const addProduct_schema = yup.object().shape({
     .required("Image is required")
     .test("fileExists", "Image is required", (value) => !!value),
 });
+
+export const addSpecialField_schema = yup.object().shape({
+    specialFieldName: yup.string().min(2, "less than 2 words").required(),
+    specialFieldDT: yup.number().required(),
+  });

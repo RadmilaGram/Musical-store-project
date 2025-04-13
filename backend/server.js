@@ -80,6 +80,30 @@ app.get("/api/prodStatus", (req, res) => {
   });
 });
 
+app.get("/api/SpecialFieldDT", (req, res) => {
+  db.query("SELECT * FROM special_field_datatype", (err, results) => {
+    // console.log(results);
+    if (err) {
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      res.status(500).json({ message: "Ошибка получения типа данных специальных полей" });
+      return;
+    }
+    res.json(results); // Отправляем данные на фронтенд
+  });
+});
+
+app.get("/api/SpecialField", (req, res) => {
+  db.query("SELECT * FROM special_field", (err, results) => {
+    // console.log(results);
+    if (err) {
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      res.status(500).json({ message: "Ошибка получения специальных полей" });
+      return;
+    }
+    res.json(results); // Отправляем данные на фронтенд
+  });
+});
+
 // Adding part ---------------------------------------------------------------------------------------
 
 app.post("/api/addBrand", (req, res) => {
@@ -139,6 +163,26 @@ app.post('/api/addProduct', upload.single('img'), (req, res) => {
           }
       }
   );
+});
+
+app.post("/api/addSpecialField", (req, res) => {
+  const { specialFieldName, specialFieldDT } = req.body;
+  const query = "INSERT INTO special_field (name, datatype) VALUES ( ?, ? )";
+
+  db.query(query, [specialFieldName, specialFieldDT], (err, result) => {
+    if (err) {
+      console.log(req.body);
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      err.message.includes("Duplicate")
+        ? res.status(500).json({
+            message: "Ошибка добавления специальных полей",
+            error: "Duplicate",
+          })
+        : res.status(500).json({ message: "Ошибка добавления специальных полей" });
+      return;
+    }
+    res.status(201).json({ id: result.insertId, specialFieldName });
+  });
 });
 
 // Запуск сервера

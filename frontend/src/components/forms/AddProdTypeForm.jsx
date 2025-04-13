@@ -6,7 +6,7 @@ import { Button, Stack, TextField, Typography } from "@mui/material";
 import { useProductTypes } from "../../hooks/useProductTypes";
 import { addProdType_schema } from "../../utils/yupSchemas/AdminSchemas";
 import { addProdType } from "../../utils/apiService/ApiService";
-import { Item } from "../customComponents";
+import { Item } from "../Item";
 
 function AddProdTypeForm() {
   const { types, fetchProdType } = useProductTypes();

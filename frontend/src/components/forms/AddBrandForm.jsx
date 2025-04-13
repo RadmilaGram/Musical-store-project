@@ -6,7 +6,7 @@ import { Button, Stack, TextField, Typography } from "@mui/material";
 import { addBrand_schema } from "../../utils/yupSchemas/AdminSchemas";
 import { addBrand } from "../../utils/apiService/ApiService";
 import { useBrands } from "../../hooks/useBrands";
-import { Item } from "../customComponents";
+import { Item } from "../Item";
 
 function AddBrandForm() {
   const { brands, fetchBrands } = useBrands();
