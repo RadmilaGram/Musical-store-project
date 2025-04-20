@@ -13,6 +13,7 @@ const SelectField = ({
   <Controller
     control={control}
     name={name}
+    defaultValue=""
     render={({ field }) => (
       <FormControl fullWidth error={!!error}>
         <InputLabel id={`${name}-label`}>{label}</InputLabel>
@@ -25,8 +26,8 @@ const SelectField = ({
             onchange(e);
           }}
         >
-          {options.map((option) => (
-            <MenuItem key={name + option.id} value={option.id}>
+          {options.map((option, index) => (
+            <MenuItem key={`${name}_${index}`} value={option.id}>
               {option.name}
             </MenuItem>
           ))}

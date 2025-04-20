@@ -197,15 +197,33 @@ app.post("/api/addProdType", (req, res) => {
 });
 
 app.post("/api/addProduct", upload.single("img"), (req, res) => {
-  const { name, description, img, price, brandId, statusId, typeId } = req.body;
+  const {
+    name,
+    description,
+    img,
+    price,
+    brandId,
+    statusId,
+    typeId,
+    special_fields,
+  } = req.body;
   const image_url = req.file ? `/uploads/${req.file.filename}` : null;
 
   const query =
-    "INSERT INTO product (name, description, img, price, brand, status, type) VALUES ( ?, ?, ?, ?, ?, ?, ?)";
+    "INSERT INTO product (name, description, img, price, brand, status, type, special_filds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
   db.query(
     query,
-    [name, description, image_url, price, brandId, statusId, typeId],
+    [
+      name,
+      description,
+      image_url,
+      price,
+      brandId,
+      statusId,
+      typeId,
+      special_fields,
+    ],
     (err, result) => {
       if (err) {
         console.log("\x1b[31m" + err.message + "\x1b[0m");
