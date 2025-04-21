@@ -13,12 +13,13 @@ const getDynamicSchema = (specialFields = []) => {
       dynamicShape[safeName] = yup.string().required("Required");
     } else if (field.field_dt_name === "boolean") {
       dynamicShape[safeName] = yup.boolean().required("Required");
-    } else {
-      dynamicShape[safeName] = yup
-        .number()
-        .typeError("Must be a number")
-        .required("Required");
     }
+    // else {
+    //   dynamicShape[safeName] = yup
+    //     .number()
+    //     .typeError("Must be a number")
+    //     .required("Required");
+    // }
   });
 
   return yup.object().shape(dynamicShape);

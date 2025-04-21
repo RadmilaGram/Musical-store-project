@@ -82,6 +82,7 @@ function AddProductForm() {
       <Controller
         control={control}
         name={safeName}
+        defaultValue={0}
         render={({ field }) => (
           <TextField
             {...field}
@@ -130,7 +131,7 @@ function AddProductForm() {
 
     await addProduct(data);
     reset();
-  });
+  },(e)=>{console.log("submit error",e)});
 
   return (
     <>
