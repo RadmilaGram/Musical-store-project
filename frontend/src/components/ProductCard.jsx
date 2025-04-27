@@ -16,28 +16,21 @@ import { API_URL } from "../utils/apiService/ApiService";
 export default function ProductCard({ product }) {
   const [expanded, setExpanded] = useState(false);
 
-  // URL изображения
   const imageUrl = product.img
     ? `${API_URL}${product.img}`
     : "/images/default-product.png";
 
-  // Разбор JSON полей
-  const rawSpecs =
+  // Специальные поля из JSON
+  const specs =
     typeof product.special_fields === "string"
       ? JSON.parse(product.special_fields)
       : product.special_fields || {};
 
-  // Гарантируем ключ isthereacaseincluded
-  const specs = { ...rawSpecs };
-  if (!Object.prototype.hasOwnProperty.call(specs, "isthereacaseincluded")) {
-    specs.isthereacaseincluded = false;
-  }
-
-  // Формат булевых
+  // Формат булевых и прочих значений
   const formatValue = (val) =>
     typeof val === "boolean" ? (val ? "yes" : "no") : String(val);
 
-  // Описание (сокращённая и полная версии)
+  // Описание и его обрезанная версия
   const fullDesc = product.description || "";
   const summary = useMemo(() => {
     return fullDesc.length > 80
@@ -46,7 +39,7 @@ export default function ProductCard({ product }) {
   }, [fullDesc]);
   const isTruncated = fullDesc.length > summary.length;
 
-  // Статус
+  // Статус с заглавной буквы
   const statusText = product.status_name
     ? product.status_name[0].toUpperCase() + product.status_name.slice(1)
     : "";
@@ -64,7 +57,7 @@ export default function ProductCard({ product }) {
         p: 2,
       }}
     >
-      {/* Верхняя часть: картинка + заголовок + спецполя в колонки */}
+      {/* Верхняя часть: картинка + заголовок + спецполя */}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <CardMedia
           component="img"
@@ -82,7 +75,7 @@ export default function ProductCard({ product }) {
 
         <Box sx={{ ml: 2, flex: 1, overflow: "hidden" }}>
           <Typography variant="h6" sx={{ color: "#FF4C7D" }}>
-            {product.name} —{" "}
+            {product.name} —{' '}
             <Box component="span" sx={{ color: "#FF4C7D" }}>
               {product.brand_name}
             </Box>
