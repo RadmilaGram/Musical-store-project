@@ -54,7 +54,7 @@ export default function CategoryPage() {
           No products to display
         </Typography>
       ) : (
-        <Stack spacing={3}>
+        <Stack spacing={3} alignItems="center">
           {filtered.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
