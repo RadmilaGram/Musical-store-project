@@ -322,6 +322,29 @@ app.post("/api/addSpecialFieldToProductType", (req, res) => {
   });
 });
 
+app.post("/api/tradein", (req, res) => {
+  const { product_id, discount } = req.body;
+  const query =
+    "INSERT INTO tradein ( product_id, discont) VALUES ( ?, ? )";
+
+  db.query(query, [product_id, discount], (err, result) => {
+    if (err) {
+      console.log(req.body);
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      err.message.includes("Duplicate")
+        ? res.status(500).json({
+            message: "Ошибка добавления трейд-ин",
+            error: "Duplicate",
+          })
+        : res
+            .status(500)
+            .json({ message: "Ошибка добавления трейд-ин" });
+      return;
+    }
+    res.status(201).json({ id: result.insertId });
+  });
+});
+
 // Запуск сервера
 const port = 5000;
 app.listen(port, () => {

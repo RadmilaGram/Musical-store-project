@@ -174,6 +174,16 @@ export const addSpecialFieldToProductType = async (formData) => {
   }
 };
 
-export async function addTradeInProduct({ product_id, discount }) {
-  return axios.post(`${API_URL}/api/tradein`, { product_id, discount });
-}
+export const addTradeInProduct = async ({ product_id, discount }) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/api/tradein`,
+      { product_id, discount }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка при добавлении специального поля:", error);
+    throw error;
+  }
+};
+

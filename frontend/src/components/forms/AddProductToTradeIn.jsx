@@ -90,7 +90,7 @@ export default function AddProductToTradeIn() {
         />
 
         <TextField
-          label="Max Discount (%)"
+          label="Max Discount"
           type="number"
           {...register("maxDiscount", { required: "Required" })}
           error={!!errors.maxDiscount}
