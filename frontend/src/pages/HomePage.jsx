@@ -1,54 +1,67 @@
-// src/pages/HomePage.jsx
+import { Link } from "react-router-dom";
+import { categoryGroups } from "../constants/categoryGroups";
 import {
+  Container,
+  Grid,
   Card,
-  CardActionArea,
   CardMedia,
   CardContent,
   Typography,
-  Grid,
-  Container,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { categoryGroups } from "../constants/categoryGroups";
 
 const HomePage = () => {
-  const navigate = useNavigate();
-
-  const handleClick = (groupId) => {
-    navigate(`/category/${groupId}`);
-  };
-
   return (
     <Container maxWidth="lg" sx={{ py: 5 }}>
       <Grid container spacing={4} justifyContent="center">
         {categoryGroups.map((group) => (
           <Grid item xs={12} sm={6} md={4} key={group.id}>
             <Card
-              onClick={() => handleClick(group.id)}
               sx={{
                 maxWidth: 350,
                 margin: "0 auto",
                 boxShadow: 3,
                 borderRadius: 3,
+                transition: "transform 0.2s, box-shadow 0.2s",
+                "&:hover": {
+                  transform: "scale(1.03)",
+                  boxShadow: 6,
+                },
               }}
             >
-              <CardActionArea>
+              <Link
+                to={`/category/${group.id}`}
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "block",
+                  borderRadius: 12,
+                }}
+              >
                 <CardMedia
                   component="img"
                   height="300"
                   image={group.image}
                   alt={group.title}
-                  sx={{ objectFit: "cover" }}
+                  sx={{
+                    objectFit: "cover",
+                    borderTopLeftRadius: "12px",
+                    borderTopRightRadius: "12px",
+                  }}
                   onError={(e) => {
-                    e.target.src = "/images/default-group.jpg";
+                    e.target.src = "/images/default-group.png";
                   }}
                 />
                 <CardContent>
-                  <Typography variant="h6" align="center">
+                  <Typography
+                    variant="h6"
+                    align="center"
+                    color="text.primary"
+                    sx={{ fontWeight: 500 }}
+                  >
                     {group.title}
                   </Typography>
                 </CardContent>
-              </CardActionArea>
+              </Link>
             </Card>
           </Grid>
         ))}

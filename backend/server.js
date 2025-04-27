@@ -155,6 +155,25 @@ app.get("/api/TypeSpecialFields", (req, res) => {
   );
 });
 
+app.get("/api/product-view", (req, res) => {
+  console.log("get products")
+  const query = `
+    SELECT 
+      *
+    FROM product_view 
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("\x1b[31m%s\x1b[0m", err.message);
+      return res.status(500).json({ message: "Ошибка получения товаров" });
+    }
+
+    res.json(results);
+  });
+});
+
+
 // Adding part ---------------------------------------------------------------------------------------
 
 app.post("/api/addBrand", (req, res) => {

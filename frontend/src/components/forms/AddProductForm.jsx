@@ -105,33 +105,34 @@ function AddProductForm() {
   } = useAddProductForm(productTypeSpecialFields || []);
 
   const submitFn = handleSubmit(async (data) => {
-    // Список полей, которые НЕ относятся к special_fields
-    const staticFields = [
-      "name",
-      "description",
-      "img",
-      "price",
-      "brandId",
-      "statusId",
-      "typeId",
-    ];
-
-    // Выбираем все остальные — это dynamic fields
-    const dynamicFields = Object.keys(data)
-      .filter((key) => !staticFields.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = data[key];
-        return obj;
-      }, {});
-
-    // Добавляем в виде JSON-строки
-    data.special_fields = JSON.stringify(dynamicFields);
-
-    console.log("Final Data To Submit:", data);
-
-    await addProduct(data);
+    // 1) найдём в data все ключи, не входящие в static
+    const staticList = ["name","description","img","price","brandId","statusId","typeId"];
+    const dynamicKeys = Object.keys(data).filter(k => !staticList.includes(k));
+  
+    // 2) для каждого динамического ключа найдём исходный item по совпадению safeName
+    const specialFieldsPayload = {};
+    dynamicKeys.forEach((key) => {
+      const item = productTypeSpecialFields.find(it =>
+        it.field_name.replace(/\s/g, "") === key
+      );
+      if (item) {
+        // originalKey — с пробелами
+        specialFieldsPayload[item.field_name] = data[key];
+        delete data[key];
+      }
+    });
+  
+    // 3) формируем итоговый payload
+    const payload = {
+      ...data,
+      special_fields: JSON.stringify(specialFieldsPayload),
+    };
+  
+    console.log("Final payload:", payload);
+    await addProduct(payload);
     reset();
-  },(e)=>{console.log("submit error",e)});
+  }, (errors) => console.log("Validation errors:", errors));
+  
 
   return (
     <>
