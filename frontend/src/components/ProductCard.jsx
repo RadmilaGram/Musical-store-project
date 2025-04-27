@@ -1,12 +1,11 @@
 // src/components/ProductCard.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Card,
   CardMedia,
   Typography,
   IconButton,
   Box,
-  Collapse,
 } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -15,31 +14,40 @@ import { API_URL } from "../utils/apiService/ApiService";
 
 export default function ProductCard({ product }) {
   const [expanded, setExpanded] = useState(false);
+  const [isOverflowed, setIsOverflowed] = useState(false);
+  const [maxHeight, setMaxHeight] = useState(0);
+  const descRef = useRef(null);
+
+  // Number of lines to clamp before showing toggle
+  const CLAMP_LINES = 4;
 
   const imageUrl = product.img
     ? `${API_URL}${product.img}`
     : "/images/default-product.png";
 
-  // Специальные поля из JSON
+  // parse special_fields JSON
   const specs =
     typeof product.special_fields === "string"
       ? JSON.parse(product.special_fields)
       : product.special_fields || {};
 
-  // Формат булевых и прочих значений
   const formatValue = (val) =>
     typeof val === "boolean" ? (val ? "yes" : "no") : String(val);
 
-  // Описание и его обрезанная версия
   const fullDesc = product.description || "";
-  const summary = useMemo(() => {
-    return fullDesc.length > 80
-      ? fullDesc.slice(0, 80).trim()
-      : fullDesc;
-  }, [fullDesc]);
-  const isTruncated = fullDesc.length > summary.length;
 
-  // Статус с заглавной буквы
+  // detect if description exceeds CLAMP_LINES and set maxHeight
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) {
+      const style = window.getComputedStyle(el);
+      const lineHeight = parseFloat(style.lineHeight);
+      const mh = lineHeight * CLAMP_LINES;
+      setMaxHeight(mh);
+      setIsOverflowed(el.scrollHeight > mh);
+    }
+  }, [fullDesc, CLAMP_LINES]);
+
   const statusText = product.status_name
     ? product.status_name[0].toUpperCase() + product.status_name.slice(1)
     : "";
@@ -49,7 +57,7 @@ export default function ProductCard({ product }) {
       sx={{
         position: "relative",
         width: 700,
-        minHeight: 250,
+        minHeight: 150,
         bgcolor: "#FFF5F7",
         borderLeft: "4px solid #FF4C7D",
         display: "flex",
@@ -57,23 +65,16 @@ export default function ProductCard({ product }) {
         p: 2,
       }}
     >
-      {/* Верхняя часть: картинка + заголовок + спецполя */}
+      {/* Top: image + title + special fields columns */}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <CardMedia
           component="img"
           image={imageUrl}
           alt={product.name}
-          sx={{
-            width: 200,
-            height: 200,
-            objectFit: "cover",
-            borderRadius: 1,
-            flexShrink: 0,
-          }}
+          sx={{ width: 150, height: 150, objectFit: "cover", borderRadius: 1, flexShrink: 0 }}
           onError={(e) => (e.target.src = "/images/default-product.png")}
         />
-
-        <Box sx={{ ml: 2, flex: 1, overflow: "hidden" }}>
+        <Box sx={{ ml: 2, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <Typography variant="h6" sx={{ color: "#FF4C7D" }}>
             {product.name} —{' '}
             <Box component="span" sx={{ color: "#FF4C7D" }}>
@@ -81,83 +82,49 @@ export default function ProductCard({ product }) {
             </Box>
           </Typography>
 
-          <Box
-            sx={{
-              mt: 1,
-              columnCount: 2,
-              columnGap: 2,
-            }}
-          >
+          <Box sx={{ mt: 1, columnCount: 2, columnGap: 2 }}>
             {Object.entries(specs).map(([key, val]) => (
               <Typography key={key} variant="body2" sx={{ breakInside: "avoid" }}>
                 <strong>{key}</strong>: {formatValue(val)}
               </Typography>
             ))}
           </Box>
-        </Box>
-      </Box>
 
-      {/* Нижняя часть: описание + разворачивание */}
-      <Box sx={{ px: 2, pt: 1 }}>
-        {!expanded && (
-          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+          {/* Description under special fields, clamp at CLAMP_LINES lines */}
+          <Box sx={{ mt: 1, display: "flex", alignItems: "flex-start", width: "100%" }}>
             <Typography
-              noWrap
+              ref={descRef}
               variant="body2"
               color="text.secondary"
-              sx={{ flex: 1, minWidth: 0, overflowWrap: "break-word" }}
+              component="div"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                overflowWrap: "break-word",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: expanded ? "none" : CLAMP_LINES,
+                maxHeight: expanded ? "none" : `${maxHeight}px`,
+              }}
             >
-              <strong>Description:</strong> {summary}
+              <strong>Description:&nbsp;</strong>{fullDesc}
             </Typography>
-            {isTruncated && (
-              <IconButton size="small" onClick={() => setExpanded(true)}>
-                <ExpandMoreIcon sx={{ color: "#FF4C7D" }} />
+            {isOverflowed && (
+              <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
+                {expanded ? (
+                  <ExpandLessIcon sx={{ color: "#FF4C7D" }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ color: "#FF4C7D" }} />
+                )}
               </IconButton>
             )}
           </Box>
-        )}
-
-        {isTruncated && expanded && (
-          <Collapse in={expanded} unmountOnExit>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                width: "100%",
-                mt: 1,
-              }}
-            >
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  overflowWrap: "break-word",
-                  whiteSpace: "normal",
-                }}
-              >
-                <strong>Description:</strong> {fullDesc}
-              </Typography>
-              <IconButton size="small" onClick={() => setExpanded(false)}>
-                <ExpandLessIcon sx={{ color: "#FF4C7D" }} />
-              </IconButton>
-            </Box>
-          </Collapse>
-        )}
+        </Box>
       </Box>
 
-      {/* Блок статуса, цены и корзины */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
+      {/* Status / price / cart at top-right */}
+      <Box sx={{ position: "absolute", top: 16, right: 16, display: "flex", alignItems: "center", gap: 1 }}>
         <Typography variant="body1" color="success.main">
           {statusText}
         </Typography>
