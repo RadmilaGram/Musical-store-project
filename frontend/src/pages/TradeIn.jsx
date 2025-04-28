@@ -1,5 +1,5 @@
 // src/pages/TradeIn.jsx
-import React, { useState } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { Box, Stack, Typography, Button, IconButton } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -8,6 +8,7 @@ import { useProductTypes } from "../hooks/useProductTypes";
 import { useBrands } from "../hooks/useBrands";
 import { useProducts } from "../hooks/useProducts";
 import { useTradeInConfigs } from "../hooks/useTradeInConfigs";
+import { useTradeIn } from "../hooks/useTradeIn";
 
 // Condition options mapping with discount factors
 const stateOptions = [
@@ -24,6 +25,7 @@ export default function TradeIn() {
   const { brands } = useBrands();
   const { data: products = [], loading, error } = useProducts();
   const { tradeInConfigs } = useTradeInConfigs();
+  const { items: selectedList, add, remove, total } = useTradeIn();
 
   const { control, handleSubmit, watch, reset } = useForm({
     defaultValues: { typeId: "", brandId: "", productId: "", stateId: "" },
@@ -37,56 +39,44 @@ export default function TradeIn() {
   // Build available products list from configs
   const available = tradeInConfigs
     .map((cfg) => {
-      // view returns id as product id
       const prod = products.find((p) => p.id === cfg.id);
       return prod ? { ...prod, baseDiscount: cfg.discount } : null;
     })
     .filter(Boolean);
 
-  // derive available types from available products
-  const availableTypes = types.filter((t) =>
-    available.some((p) => p.type_name === t.name)
-  );
+  // Derive available types
+  const availableTypes = types.filter((t) => available.some((p) => p.type_name === t.name));
 
-  // derive filtered brands based on selected type
+  // Filter brands by selected type
   const filteredBrands = typeId
     ? brands.filter((b) =>
         available.some(
-          (p) => p.type_name === types.find((t) => t.id === typeId)?.name && p.brand_name === b.name
+          (p) => p.type_name === types.find((t) => t.id === Number(typeId))?.name && p.brand_name === b.name
         )
       )
     : [];
 
-  // derive filtered products based on selected type and brand
+  // Filter products by selected type & brand
   const filteredProducts = brandId
     ? available.filter(
         (p) =>
-          p.type_name === types.find((t) => t.id === typeId)?.name &&
-          p.brand_name === brands.find((b) => b.id === brandId)?.name
+          p.type_name === types.find((t) => t.id === Number(typeId))?.name &&
+          p.brand_name === brands.find((b) => b.id === Number(brandId))?.name
       )
     : [];
-
-  const [selectedList, setSelectedList] = useState([]);
 
   const onAdd = ({ productId, stateId }) => {
     const prod = filteredProducts.find((p) => p.id === productId);
     const stateOpt = stateOptions.find((s) => s.id === stateId);
     if (!prod || !stateOpt) return;
-    // calculate discount in dollars using factor
     const expected = Math.round(prod.baseDiscount * stateOpt.factor);
-    setSelectedList((prev) => [
-      ...prev,
-      { ...prod, stateId, expectedDiscount: expected },
-    ]);
+    add({ ...prod, stateId, expectedDiscount: expected });
     reset();
   };
 
   const onRemove = (id) => {
-    setSelectedList((prev) => prev.filter((item) => item.id !== id));
+    remove(id);
   };
-
-  // Total discount in dollars
-  const total = selectedList.reduce((sum, item) => sum + item.expectedDiscount, 0);
 
   if (loading) return <Typography>Loading...</Typography>;
   if (error) return <Typography color="error">Error loading products.</Typography>;
@@ -126,11 +116,7 @@ export default function TradeIn() {
             disabled={!productId}
           />
 
-          <Button
-            variant="contained"
-            type="submit"
-            disabled={!productId || !stateId}
-          >
+          <Button variant="contained" type="submit" disabled={!productId || !stateId}>
             Add
           </Button>
         </Stack>
@@ -145,14 +131,7 @@ export default function TradeIn() {
             {selectedList.map((item) => (
               <Box
                 key={item.id}
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  p: 1,
-                  bgcolor: "#fafafa",
-                  borderRadius: 1,
-                }}
+                sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 1, bgcolor: "#fafafa", borderRadius: 1 }}
               >
                 <Typography>
                   {item.name} • {item.brand_name} • {item.type_name}
