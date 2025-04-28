@@ -173,6 +173,26 @@ app.get("/api/product-view", (req, res) => {
   });
 });
 
+app.get("/api/tradein", (req, res) => {
+  const query = `
+    SELECT 
+      id,
+      name,
+      img,
+      brand_name,
+      type_name,
+      discount
+    FROM tradein_product_view
+  `;
+  
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Ошибка при получении trade-in товаров:", err);
+      return res.status(500).json({ error: "Ошибка сервера" });
+    }
+    res.json(results);
+  });
+});
 
 // Adding part ---------------------------------------------------------------------------------------
 
