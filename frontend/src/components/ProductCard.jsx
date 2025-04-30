@@ -10,33 +10,32 @@ import {
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import RemoveIcon from "@mui/icons-material/Remove";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { API_URL } from "../utils/apiService/ApiService";
+import { useCart } from "../hooks/useCart";
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, showRemove = false }) {
   const [expanded, setExpanded] = useState(false);
   const [isOverflowed, setIsOverflowed] = useState(false);
   const [maxHeight, setMaxHeight] = useState(0);
   const descRef = useRef(null);
+  const { items, add, remove } = useCart();
+  const cartItem = items.find((i) => i.id === product.id);
+  const quantity = cartItem?.quantity ?? 0;
 
-  // Number of lines to clamp before showing toggle
   const CLAMP_LINES = 4;
+  const imageUrl = product.img ? `${API_URL}${product.img}` : "/images/default-product.png";
 
-  const imageUrl = product.img
-    ? `${API_URL}${product.img}`
-    : "/images/default-product.png";
-
-  // parse special_fields JSON
   const specs =
     typeof product.special_fields === "string"
       ? JSON.parse(product.special_fields)
       : product.special_fields || {};
 
-  const formatValue = (val) =>
-    typeof val === "boolean" ? (val ? "yes" : "no") : String(val);
-
   const fullDesc = product.description || "";
 
-  // detect if description exceeds CLAMP_LINES and set maxHeight
+  // Measure for clamp
   useEffect(() => {
     const el = descRef.current;
     if (el) {
@@ -46,7 +45,7 @@ export default function ProductCard({ product }) {
       setMaxHeight(mh);
       setIsOverflowed(el.scrollHeight > mh);
     }
-  }, [fullDesc, CLAMP_LINES]);
+  }, [fullDesc]);
 
   const statusText = product.status_name
     ? product.status_name[0].toUpperCase() + product.status_name.slice(1)
@@ -65,7 +64,7 @@ export default function ProductCard({ product }) {
         p: 2,
       }}
     >
-      {/* Top: image + title + special fields columns */}
+      {/* Top: image + title + special fields */}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <CardMedia
           component="img"
@@ -85,7 +84,7 @@ export default function ProductCard({ product }) {
           <Box sx={{ mt: 1, columnCount: 2, columnGap: 2 }}>
             {Object.entries(specs).map(([key, val]) => (
               <Typography key={key} variant="body2" sx={{ breakInside: "avoid" }}>
-                <strong>{key}</strong>: {formatValue(val)}
+                <strong>{key}</strong>: {typeof val === 'boolean' ? (val ? 'yes' : 'no') : val}
               </Typography>
             ))}
           </Box>
@@ -123,15 +122,52 @@ export default function ProductCard({ product }) {
         </Box>
       </Box>
 
-      {/* Status / price / cart at top-right */}
+      {/* Status / price / cart controls */}
       <Box sx={{ position: "absolute", top: 16, right: 16, display: "flex", alignItems: "center", gap: 1 }}>
         <Typography variant="body1" color="success.main">
           {statusText}
         </Typography>
         <Typography variant="h6">${product.price.toFixed(2)}</Typography>
-        <IconButton aria-label="add to cart" sx={{ color: "#FF4C7D" }}>
-          <ShoppingCartIcon />
-        </IconButton>
+
+        {/* Cart Controls */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}>
+          {quantity === 0 ? (
+            <IconButton
+              aria-label="add to cart"
+              sx={{ color: "#FF4C7D" }}
+              onClick={() => add({ ...product, quantity: 1 })}
+            >
+              <ShoppingCartIcon />
+            </IconButton>
+          ) : (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, bgcolor: "#FF4C7D", borderRadius: "999px", px: 0.5 }}>
+              <IconButton
+                aria-label="decrease"
+                onClick={() => (quantity > 1 ? add({ ...product, quantity: -1 }) : remove(product.id))}
+                sx={{ color: "#fff" }}
+              >
+                <RemoveIcon />
+              </IconButton>
+              <Typography sx={{ color: "#fff" }}>{quantity}</Typography>
+              <IconButton
+                aria-label="increase"
+                onClick={() => add({ ...product, quantity: 1 })}
+                sx={{ color: "#fff" }}
+              >
+                <AddIcon />
+              </IconButton>
+            </Box>
+          )}
+          {showRemove && (
+            <IconButton
+              aria-label="remove from cart"
+              onClick={() => remove(product.id)}
+              sx={{ color: "#FF4C7D", bgcolor: "rgba(255,76,125,0.1)", borderRadius: "999px" }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
     </Card>
   );

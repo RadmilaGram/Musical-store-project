@@ -365,6 +365,19 @@ app.post("/api/tradein", (req, res) => {
   });
 });
 
+app.post("/api/orders", (req, res) => {
+  const { items } = req.body;
+  console.log("New order received:", items);
+
+  // TODO: insert into orders and order_items tables
+  // e.g.:
+  // const orderQuery = "INSERT INTO orders (user_id, total) VALUES (?, ?)";
+  // db.query(orderQuery, [userId, total], (err, result) => { ... });
+
+  // Stub response
+  res.json({ success: true, message: "Order received (stub).", order: { items } });
+});
+
 // Запуск сервера
 const port = 5000;
 app.listen(port, () => {

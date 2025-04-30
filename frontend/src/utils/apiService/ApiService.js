@@ -187,3 +187,8 @@ export const addTradeInProduct = async ({ product_id, discount }) => {
   }
 };
 
+export async function placeOrder(payload) {
+  // Temporary stub: replace endpoint when backend is implemented
+  return axios.post(`${API_URL}/api/orders`, payload);
+}
+
