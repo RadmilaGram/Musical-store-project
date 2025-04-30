@@ -5,6 +5,9 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const fs = require("fs");
 
+const bcrypt = require("bcrypt");
+const SALT_ROUNDS = 12;
+
 const app = express(); // Инициализация Express
 app.use(cors()); // Настроим CORS для разрешения запросов с фронтенда
 app.use(express.json()); // Парсим JSON-данные из запросов
@@ -39,6 +42,67 @@ db.connect((err) => {
     return;
   }
   console.log("Подключение к базе данных MySQL успешно");
+});
+
+// /**
+//  * Принимает «чистый» пароль пользователя,
+//  * возвращает готовый к хранению хеш.
+//  */
+async function hashPassword(plainPassword) {
+  try {
+    const hash = await bcrypt.hash(plainPassword, SALT_ROUNDS);
+    return hash;
+  } catch (err) {
+    console.error("Ошибка при хешировании пароля:", err);
+    throw err;
+  }
+}
+
+// app.post('/register', async (req, res) => {
+//   const { username, password } = req.body;
+//   const passwordHash = await hashPassword(password);
+//   // Сохраняем в БД: username + passwordHash
+//   await db.query('INSERT INTO users(username, password_hash) VALUES(?, ?)', [username, passwordHash]);
+//   res.sendStatus(201);
+// });
+
+/**
+ * Сравнивает введённый пароль и хеш из БД.
+ * Возвращает true, если совпадают.
+ */
+async function verifyPassword(plainPassword, storedHash) {
+  try {
+    const isMatch = await bcrypt.compare(plainPassword, storedHash);
+    return isMatch;
+  } catch (err) {
+    console.error("Ошибка при проверке пароля:", err);
+    throw err;
+  }
+}
+
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  const query = "SELECT * FROM users WHERE email = ?";
+
+  db.query(query, [email], async (err, results) => {
+    // console.log(results);
+    if (err) {
+      console.log("\x1b[31m" + err.message + "\x1b[0m");
+      res.status(500).json({ message: "Ошибка получения бренда" });
+      return;
+    }
+
+    if (!results[0]) {
+      return res.status(401).send("Неверные учетные данные");
+    }
+
+    const ok = await verifyPassword(password, results[0].password);
+    if (!ok) {
+      return res.status(401).send("Неверные учетные данные");
+    }
+
+    res.json(results[0]); // Отправляем данные на фронтенд
+  });
 });
 
 // Reading part ---------------------------------------------------------------------------------------
@@ -155,13 +219,19 @@ app.get("/api/TypeSpecialFields", (req, res) => {
   );
 });
 
-app.get("/api/product-view", (req, res) => {
-  console.log("get products")
+app.get("/api/product-view", async (req, res) => {
+  console.log("get products");
   const query = `
     SELECT 
       *
     FROM product_view 
   `;
+
+  // const passwordHash = await hashPassword("Boss Just");
+  // console.log("passwordHash", passwordHash)
+
+  // const passwordHash = await hashPassword("Lonely Klay");
+  // console.log("passwordHash", passwordHash);
 
   db.query(query, (err, results) => {
     if (err) {
@@ -344,8 +414,7 @@ app.post("/api/addSpecialFieldToProductType", (req, res) => {
 
 app.post("/api/tradein", (req, res) => {
   const { product_id, discount } = req.body;
-  const query =
-    "INSERT INTO tradein ( product_id, discont) VALUES ( ?, ? )";
+  const query = "INSERT INTO tradein ( product_id, discont) VALUES ( ?, ? )";
 
   db.query(query, [product_id, discount], (err, result) => {
     if (err) {
@@ -356,9 +425,7 @@ app.post("/api/tradein", (req, res) => {
             message: "Ошибка добавления трейд-ин",
             error: "Duplicate",
           })
-        : res
-            .status(500)
-            .json({ message: "Ошибка добавления трейд-ин" });
+        : res.status(500).json({ message: "Ошибка добавления трейд-ин" });
       return;
     }
     res.status(201).json({ id: result.insertId });
@@ -375,7 +442,11 @@ app.post("/api/orders", (req, res) => {
   // db.query(orderQuery, [userId, total], (err, result) => { ... });
 
   // Stub response
-  res.json({ success: true, message: "Order received (stub).", order: { items } });
+  res.json({
+    success: true,
+    message: "Order received (stub).",
+    order: { items },
+  });
 });
 
 // Запуск сервера
