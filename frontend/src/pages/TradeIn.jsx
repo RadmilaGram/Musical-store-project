@@ -82,7 +82,7 @@ export default function TradeIn() {
   if (error) return <Typography color="error">Error loading products.</Typography>;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
       <form onSubmit={handleSubmit(onAdd)}>
         <Stack spacing={2}>
           <SelectField
