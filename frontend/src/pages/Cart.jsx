@@ -75,7 +75,7 @@ export default function Cart() {
               width="100%"
             >
               <Stack spacing={1} sx={{ textAlign: "right" }}>
-                <Typography color="text.secondary">
+                <Typography color="text.primary">
                   Price: ${purchaseTotal.toFixed(2)}
                 </Typography>
                 <Typography color="success.main">

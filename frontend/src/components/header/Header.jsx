@@ -13,12 +13,8 @@ import "./Header.css";
 
 const pages = [
   {
-    menuTitle: "Home",
+    menuTitle: "Catalog",
     pageURL: "/",
-  },
-  {
-    menuTitle: "ProductDetails",
-    pageURL: "/ProductDetails",
   },
   {
     menuTitle: "Cart",

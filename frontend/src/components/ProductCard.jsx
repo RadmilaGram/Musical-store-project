@@ -53,8 +53,8 @@ export default function ProductCard({ product, showRemove = false }) {
         position: "relative",
         width: 800,
         minHeight: 150,
-        bgcolor: "#FFF5F7",
-        borderLeft: "4px solid #FF4C7D",
+        bgcolor: "#E4F2FF",
+        borderLeft: "4px solid #1976d2",
         display: "flex",
         flexDirection: "column",
         p: 2,
@@ -84,9 +84,9 @@ export default function ProductCard({ product, showRemove = false }) {
             flexDirection: "column",
           }}
         >
-          <Typography variant="h6" sx={{ color: "#FF4C7D" }}>
+          <Typography variant="h6" sx={{ color: "#1976d2" }}>
             {product.name} —{" "}
-            <Box component="span" sx={{ color: "#FF4C7D" }}>
+            <Box component="span" sx={{ color: "#1976d2" }}>
               {product.brand_name}
             </Box>
           </Typography>
@@ -135,9 +135,9 @@ export default function ProductCard({ product, showRemove = false }) {
             {isOverflowed && (
               <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
                 {expanded ? (
-                  <ExpandLessIcon sx={{ color: "#FF4C7D" }} />
+                  <ExpandLessIcon sx={{ color: "#1976d2" }} />
                 ) : (
-                  <ExpandMoreIcon sx={{ color: "#FF4C7D" }} />
+                  <ExpandMoreIcon sx={{ color: "#1976d2" }} />
                 )}
               </IconButton>
             )}
@@ -156,7 +156,13 @@ export default function ProductCard({ product, showRemove = false }) {
           gap: 1,
         }}
       >
-        <Typography variant="body1" color="success.main">
+        <Typography
+          variant="body1"
+          sx={{
+            fontWeight: "bold",
+            color: "success.main",
+          }}
+        >
           {statusText}
         </Typography>
         <Typography variant="h6">${product.price.toFixed(2)}</Typography>
@@ -176,7 +182,7 @@ export default function ProductCard({ product, showRemove = false }) {
         {quantity === 0 ? (
           <IconButton
             aria-label="add to cart"
-            sx={{ color: "#FF4C7D" }}
+            sx={{ color: "#1976d2" }}
             onClick={() => add({ ...product, quantity: 1 })}
           >
             <ShoppingCartIcon />
@@ -191,7 +197,7 @@ export default function ProductCard({ product, showRemove = false }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                bgcolor: "#FF4C7D",
+                bgcolor: "#1976d2",
                 borderRadius: "999px",
                 px: 0.5,
               }}
@@ -223,9 +229,7 @@ export default function ProductCard({ product, showRemove = false }) {
             aria-label="remove from cart"
             onClick={() => remove(product.id)}
             sx={{
-              color: "#FF4C7D",
-              bgcolor: "rgba(255,76,125,0.1)",
-              borderRadius: "999px",
+              color: "#1976d2",
             }}
           >
             <DeleteIcon />
