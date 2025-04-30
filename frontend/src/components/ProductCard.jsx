@@ -73,7 +73,7 @@ export default function ProductCard({ product, showRemove = false }) {
             borderRadius: 1,
             flexShrink: 0,
           }}
-          onError={(e) => (e.target.src = "/images/default-product.png")}
+          onError={(e) => (e.target.src = "/images/default-product.jpg")}
         />
         <Box
           sx={{

@@ -48,7 +48,7 @@ const HomePage = () => {
                     borderTopRightRadius: "12px",
                   }}
                   onError={(e) => {
-                    e.target.src = "/images/default-group.png";
+                    e.target.src = "/images/default-group.jpg";
                   }}
                 />
                 <CardContent>
