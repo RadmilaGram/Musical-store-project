@@ -23,9 +23,8 @@ export default function Cart() {
   const effectiveDiscount = Math.min(totalDiscount, maxAllowedDiscount);
 
   // Unused portion if discount exceeds half the price
-  const unusedDiscount = totalDiscount > maxAllowedDiscount
-    ? totalDiscount - maxAllowedDiscount
-    : 0;
+  const unusedDiscount =
+    totalDiscount > maxAllowedDiscount ? totalDiscount - maxAllowedDiscount : 0;
 
   // Final price after applying effective discount
   const finalPrice = purchaseTotal - effectiveDiscount;
@@ -47,46 +46,34 @@ export default function Cart() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
-      <Typography variant="h5" mb={2}>
+    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
+      <Typography variant="h5" mb={2} align="center">
         Cart
       </Typography>
 
       {cartItems.length === 0 ? (
         <Typography>Your cart is empty.</Typography>
       ) : (
-        <Stack spacing={2}>
+        <Stack spacing={2} alignItems="center">
           {/* Cart Items as ProductCard */}
           {cartItems.map((item) => {
-            const totalPrice = (item.price * item.quantity).toFixed(2);
             return (
-              <Box key={item.id} sx={{ position: 'relative', display: 'inline-block', mb: 4 }}>
+              <Box
+                key={item.id}
+                sx={{ position: "relative", display: "inline-block", mb: 4 }}
+              >
                 <ProductCard showRemove={true} product={item} />
-                {item.quantity > 1 && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      right: 16,
-                      bottom: -24,
-                      bgcolor: '#fff',
-                      boxShadow: 1,
-                      borderRadius: 1,
-                      px: 1.5,
-                      py: 0.5,
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
-                      Total: ${totalPrice}
-                    </Typography>
-                  </Box>
-                )}
               </Box>
             );
           })}
 
           {/* Trade-In Summary (replaces Total) */}
           {tradeInItems.length > 0 ? (
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}
+              align="right"
+              width="100%"
+            >
               <Stack spacing={1} sx={{ textAlign: "right" }}>
                 <Typography color="text.secondary">
                   Price: ${purchaseTotal.toFixed(2)}
@@ -101,14 +88,22 @@ export default function Cart() {
                 )}
                 <Typography
                   variant="h6"
-                  sx={{ fontWeight: 'bold', fontSize: '1.25rem', color: 'success.main' }}
+                  sx={{
+                    fontWeight: "bold",
+                    fontSize: "1.25rem",
+                    color: "success.main",
+                  }}
                 >
                   Final Price: ${finalPrice.toFixed(2)}
                 </Typography>
               </Stack>
             </Box>
           ) : (
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "flex-end" }}
+              align="right"
+              width="100%"
+            >
               <Typography variant="h6">
                 Total: ${purchaseTotal.toFixed(2)}
               </Typography>

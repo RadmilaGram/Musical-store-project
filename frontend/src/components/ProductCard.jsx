@@ -1,12 +1,6 @@
 // src/components/ProductCard.jsx
 import React, { useState, useRef, useEffect } from "react";
-import {
-  Card,
-  CardMedia,
-  Typography,
-  IconButton,
-  Box,
-} from "@mui/material";
+import { Card, CardMedia, Typography, IconButton, Box } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -26,7 +20,9 @@ export default function ProductCard({ product, showRemove = false }) {
   const quantity = cartItem?.quantity ?? 0;
 
   const CLAMP_LINES = 4;
-  const imageUrl = product.img ? `${API_URL}${product.img}` : "/images/default-product.png";
+  const imageUrl = product.img
+    ? `${API_URL}${product.img}`
+    : "/images/default-product.png";
 
   const specs =
     typeof product.special_fields === "string"
@@ -35,7 +31,7 @@ export default function ProductCard({ product, showRemove = false }) {
 
   const fullDesc = product.description || "";
 
-  // Measure for clamp
+  // Measure overflow for description
   useEffect(() => {
     const el = descRef.current;
     if (el) {
@@ -55,7 +51,7 @@ export default function ProductCard({ product, showRemove = false }) {
     <Card
       sx={{
         position: "relative",
-        width: 700,
+        width: 800,
         minHeight: 150,
         bgcolor: "#FFF5F7",
         borderLeft: "4px solid #FF4C7D",
@@ -70,12 +66,26 @@ export default function ProductCard({ product, showRemove = false }) {
           component="img"
           image={imageUrl}
           alt={product.name}
-          sx={{ width: 150, height: 150, objectFit: "cover", borderRadius: 1, flexShrink: 0 }}
+          sx={{
+            width: 200,
+            height: 200,
+            objectFit: "cover",
+            borderRadius: 1,
+            flexShrink: 0,
+          }}
           onError={(e) => (e.target.src = "/images/default-product.png")}
         />
-        <Box sx={{ ml: 2, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <Box
+          sx={{
+            ml: 2,
+            flex: 1,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           <Typography variant="h6" sx={{ color: "#FF4C7D" }}>
-            {product.name} —{' '}
+            {product.name} —{" "}
             <Box component="span" sx={{ color: "#FF4C7D" }}>
               {product.brand_name}
             </Box>
@@ -83,14 +93,26 @@ export default function ProductCard({ product, showRemove = false }) {
 
           <Box sx={{ mt: 1, columnCount: 2, columnGap: 2 }}>
             {Object.entries(specs).map(([key, val]) => (
-              <Typography key={key} variant="body2" sx={{ breakInside: "avoid" }}>
-                <strong>{key}</strong>: {typeof val === 'boolean' ? (val ? 'yes' : 'no') : val}
+              <Typography
+                key={key}
+                variant="body2"
+                sx={{ breakInside: "avoid" }}
+              >
+                <strong>{key}</strong>:{" "}
+                {typeof val === "boolean" ? (val ? "yes" : "no") : val}
               </Typography>
             ))}
           </Box>
 
           {/* Description under special fields, clamp at CLAMP_LINES lines */}
-          <Box sx={{ mt: 1, display: "flex", alignItems: "flex-start", width: "100%" }}>
+          <Box
+            sx={{
+              mt: 1,
+              display: "flex",
+              alignItems: "flex-start",
+              width: "100%",
+            }}
+          >
             <Typography
               ref={descRef}
               variant="body2"
@@ -107,7 +129,8 @@ export default function ProductCard({ product, showRemove = false }) {
                 maxHeight: expanded ? "none" : `${maxHeight}px`,
               }}
             >
-              <strong>Description:&nbsp;</strong>{fullDesc}
+              <strong>Description:&nbsp;</strong>
+              {fullDesc}
             </Typography>
             {isOverflowed && (
               <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
@@ -122,28 +145,64 @@ export default function ProductCard({ product, showRemove = false }) {
         </Box>
       </Box>
 
-      {/* Status / price / cart controls */}
-      <Box sx={{ position: "absolute", top: 16, right: 16, display: "flex", alignItems: "center", gap: 1 }}>
+      {/* Status & Price Top Right */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+        }}
+      >
         <Typography variant="body1" color="success.main">
           {statusText}
         </Typography>
         <Typography variant="h6">${product.price.toFixed(2)}</Typography>
+      </Box>
 
+      {/* Bottom-right: Total and Cart Controls */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          mt: 1,
+          gap: 1,
+        }}
+      >
         {/* Cart Controls */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}>
-          {quantity === 0 ? (
-            <IconButton
-              aria-label="add to cart"
-              sx={{ color: "#FF4C7D" }}
-              onClick={() => add({ ...product, quantity: 1 })}
+        {quantity === 0 ? (
+          <IconButton
+            aria-label="add to cart"
+            sx={{ color: "#FF4C7D" }}
+            onClick={() => add({ ...product, quantity: 1 })}
+          >
+            <ShoppingCartIcon />
+          </IconButton>
+        ) : (
+          <>
+            <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+              Total: ${(quantity * product.price).toFixed(2)}
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                bgcolor: "#FF4C7D",
+                borderRadius: "999px",
+                px: 0.5,
+              }}
             >
-              <ShoppingCartIcon />
-            </IconButton>
-          ) : (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, bgcolor: "#FF4C7D", borderRadius: "999px", px: 0.5 }}>
               <IconButton
                 aria-label="decrease"
-                onClick={() => (quantity > 1 ? add({ ...product, quantity: -1 }) : remove(product.id))}
+                onClick={() =>
+                  quantity > 1
+                    ? add({ ...product, quantity: -1 })
+                    : remove(product.id)
+                }
                 sx={{ color: "#fff" }}
               >
                 <RemoveIcon />
@@ -157,17 +216,21 @@ export default function ProductCard({ product, showRemove = false }) {
                 <AddIcon />
               </IconButton>
             </Box>
-          )}
-          {showRemove && (
-            <IconButton
-              aria-label="remove from cart"
-              onClick={() => remove(product.id)}
-              sx={{ color: "#FF4C7D", bgcolor: "rgba(255,76,125,0.1)", borderRadius: "999px" }}
-            >
-              <DeleteIcon />
-            </IconButton>
-          )}
-        </Box>
+          </>
+        )}
+        {showRemove && (
+          <IconButton
+            aria-label="remove from cart"
+            onClick={() => remove(product.id)}
+            sx={{
+              color: "#FF4C7D",
+              bgcolor: "rgba(255,76,125,0.1)",
+              borderRadius: "999px",
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        )}
       </Box>
     </Card>
   );
