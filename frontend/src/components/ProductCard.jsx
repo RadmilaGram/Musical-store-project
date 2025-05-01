@@ -69,7 +69,7 @@ export default function ProductCard({ product, showRemove = false }) {
           sx={{
             width: 200,
             height: 200,
-            objectFit: "cover",
+            objectFit: "contain",
             borderRadius: 1,
             flexShrink: 0,
           }}
@@ -85,9 +85,9 @@ export default function ProductCard({ product, showRemove = false }) {
           }}
         >
           <Typography variant="h6" sx={{ color: "#1976d2" }}>
-            {product.name} —{" "}
+            {product.brand_name} —{" "}
             <Box component="span" sx={{ color: "#1976d2" }}>
-              {product.brand_name}
+              {product.name}
             </Box>
           </Typography>
 
