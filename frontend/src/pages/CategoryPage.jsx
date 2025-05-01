@@ -1,65 +1,91 @@
 // src/pages/CategoryPage.jsx
-import React from "react";
-import { useParams } from "react-router-dom";
-import { Container, Typography, Stack } from "@mui/material";
-import { useProducts } from "../hooks/useProducts";
-import { categoryGroups } from "../constants/categoryGroups";
-import ProductCard from "../components/ProductCard";
+import React, { useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+import {
+  Container,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  Box,
+  CircularProgress,
+  Typography,
+} from '@mui/material';
+import ProductCard from '../components/ProductCard';
+import { useProducts } from '../hooks/useProducts';
+import { categoryGroups } from '../constants/categoryGroups';
 
 export default function CategoryPage() {
   const { groupId } = useParams();
-  const group = categoryGroups.find((g) => g.id === groupId);
-  const { data: products = [], loading, error } = useProducts();
+  const { data: products, loading, error } = useProducts();
 
-  if (!group) {
-    return (
-      <Container sx={{ py: 5 }}>
-        <Typography variant="h5" color="error" align="center">
-          Category not found
-        </Typography>
-      </Container>
-    );
-  }
+  const group = categoryGroups.find((g) => g.id === groupId) || { types: [] };
+  const availableTypes = group.types;
+
+  const [typeFilter, setTypeFilter] = useState('');
+
+  const filtered = useMemo(
+    () =>
+      products
+        .filter((p) => availableTypes.includes(p.type_name))
+        .filter((p) => (typeFilter ? p.type_name === typeFilter : true)),
+    [products, availableTypes, typeFilter]
+  );
+
   if (loading) {
     return (
-      <Container sx={{ py: 5 }}>
-        <Typography align="center">Loading products…</Typography>
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+        <CircularProgress />
+      </Box>
     );
   }
   if (error) {
     return (
-      <Container sx={{ py: 5 }}>
-        <Typography align="center" color="error">
-          Error loading products
-        </Typography>
-      </Container>
+      <Typography color="error" align="center" sx={{ mt: 5 }}>
+        Failed to load products.
+      </Typography>
     );
   }
 
-  const normalize = (s) => s.trim().toLowerCase();
-  const allowed = group.types.map(normalize);
-  const filtered = products.filter((p) =>
-    allowed.includes(normalize(p.type_name))
-  );
-
   return (
-    <Container sx={{ py: 5 }}>
+    <Container maxWidth="lg" sx={{ py: 5 }}>
+      {/* Group Name */}
       <Typography variant="h4" align="center" gutterBottom>
-        {group.title}
+        {groupId.charAt(0).toUpperCase() + groupId.slice(1)}
       </Typography>
 
-      {filtered.length === 0 ? (
-        <Typography align="center" sx={{ mt: 3 }}>
-          No products to display
-        </Typography>
-      ) : (
-        <Stack spacing={3} alignItems="center">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </Stack>
-      )}
+      {/* Filter by product type within this category */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+        <FormControl sx={{ width: 840 }}>
+          <InputLabel id="type-filter-label">Filter by Type</InputLabel>
+          <Select
+            labelId="type-filter-label"
+            value={typeFilter}
+            label="Filter by Type"
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <MenuItem value="">All Types</MenuItem>
+            {availableTypes.map((t) => (
+              <MenuItem key={t} value={t}>
+                {t}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Product cards */}
+      <Stack spacing={3} alignItems="center">
+        {filtered.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+        {filtered.length === 0 && (
+          <Typography variant="h6" color="text.secondary">
+            No products found for this filter.
+          </Typography>
+        )}
+      </Stack>
     </Container>
   );
 }

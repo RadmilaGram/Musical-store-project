@@ -1,13 +1,13 @@
 export const categoryGroups = [
     {
-      id: "strings",
-      title: "Струнные инструменты",
+      id: "String Instruments",
+      title: "String Instruments",
       image: "/images/strings.jpeg",
       types: ["Acoustic Guitars", "Electric Guitars", "Bass Guitars", "Classical Guitars", "Ukulele"],
     },
     {
-      id: "keys",
-      title: "Клавишные инструменты",
+      id: "Keyboard Instruments",
+      title: "Keyboard Instruments",
       image: "/images/keys-group.jpg",
       types: ["Digital piano", "MIDI controller", "Stage piano", "Synthesizer"],
     },
