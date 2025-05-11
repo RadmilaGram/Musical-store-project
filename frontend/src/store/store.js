@@ -1,12 +1,39 @@
 import { configureStore } from "@reduxjs/toolkit";
-import userReducer       from "./userSlice";
 import tradeInReducer from "./tradeInSlice";
-import cartReducer      from "./cartSlice";
+import cartReducer from "./cartSlice";
+import authReducer from "./authSlice";
 
-export const store = configureStore({
+// Попытка прочитать сохранённый auth из localStorage
+const savedAuth = localStorage.getItem("auth");
+const preloadedAuth = savedAuth ? JSON.parse(savedAuth) : undefined;
+
+const store = configureStore({
   reducer: {
-    user:    userReducer,
+    auth: authReducer,
     tradeIn: tradeInReducer,
-    cart:     cartReducer,
+    cart: cartReducer,
+  },
+  preloadedState: {
+    auth: preloadedAuth,
   },
 });
+
+store.subscribe(() => {
+  const { auth } = store.getState();
+  if (auth.isLoggedIn) {
+    // сохраняем весь объект auth
+    localStorage.setItem(
+      "auth",
+      JSON.stringify({
+        user: auth.user,
+        token: auth.token,
+        isLoggedIn: true,
+      })
+    );
+  } else {
+    // при логауте или сбросе — удаляем
+    localStorage.removeItem("auth");
+  }
+});
+
+export default store;

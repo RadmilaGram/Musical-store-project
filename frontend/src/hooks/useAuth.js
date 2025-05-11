@@ -1,21 +1,40 @@
-import { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { API_URL } from "../utils/apiService/ApiService";
+import { loginSuccess, logout as logoutAction } from "../store/authSlice";
 
+/**
+ * Хук для чтения состояния авторизации из Redux
+ */
 export function useAuth() {
-  const [loading, setLoading] = useState(false);
+  const { user, token, isLoggedIn } = useSelector((state) => state.auth);
+  return { user, token, isLoggedIn };
+}
 
-  const login = async (credentials) => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/api/login`, credentials);
-      setLoading(false);
-      return { data: response.data, error: null };
-    } catch (error) {
-      setLoading(false);
-      return { data: null, error: error.response?.data?.message || "Login failed" };
-    }
+/**
+ * Хук для логина: делает запрос, сохраняет в Redux и в localStorage через подписку
+ */
+export function useLogin() {
+  const dispatch = useDispatch();
+
+  return async function login({ email, password }) {
+    // делаем запрос на бэкенд
+    const { data } = await axios.post(`${API_URL}/api/login`, {
+      email,
+      password,
+    });
+    // сохраняем в Redux
+    dispatch(loginSuccess({ user: data.user, token: data.token }));
+    // на этом localStorage уже обновится автоматически благодаря store.subscribe
   };
+}
 
-  return { login, loading };
+/**
+ * Хук для логаута: чистит Redux (и localStorage)
+ */
+export function useLogout() {
+  const dispatch = useDispatch();
+  return function logout() {
+    dispatch(logoutAction());
+  };
 }

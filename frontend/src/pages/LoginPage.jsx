@@ -10,20 +10,18 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import { useAuth } from "../hooks/useAuth";
-import { useDispatch } from "react-redux";
-import { setUser } from "../store/userSlice";
-import { useNavigate } from "react-router-dom";
+import { useLogin } from "../hooks/useAuth";
 
 const schema = yup.object().shape({
   email: yup.string().email("Invalid email").required("Email is required"),
-  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  password: yup
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .required("Password is required"),
 });
 
 export default function LoginPage() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { login, loading } = useAuth();
+  const login = useLogin();
   const {
     control,
     handleSubmit,
@@ -34,23 +32,15 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = React.useState("");
 
   const onSubmit = async (data) => {
-    console.log("data", data)
-    const { data: user, error } = await login(data);
-    if (error) {
-      setErrorMsg(error);
-    } else {
-      dispatch(setUser(user));
-      navigate("/");
-    }
+    console.log("data", data);
+    await login(data);
+    // if (!isLoggedIn){setErrorMsg("Log in faild!")}
   };
 
   return (
-    <Paper
-      elevation={3}
-      sx={{ maxWidth: 400, mx: "auto", mt: 8, p: 4 }}
-    >
+    <Paper elevation={3} sx={{ maxWidth: 400, mx: "auto", mt: 8, p: 4 }}>
       <Typography variant="h5" component="h1" gutterBottom>
-        Sign In
+        Log in
       </Typography>
       {errorMsg && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -94,10 +84,11 @@ export default function LoginPage() {
           variant="contained"
           color="primary"
           fullWidth
-          disabled={loading}
+          // disabled={loading}
           sx={{ mt: 2 }}
         >
-          {loading ? "Signing In..." : "Sign In"}
+          {/* {loading ? "Loging In..." : "Log in"} */}
+          Log in
         </Button>
       </Box>
     </Paper>

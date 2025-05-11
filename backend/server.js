@@ -88,7 +88,7 @@ app.post("/api/login", async (req, res) => {
     // console.log(results);
     if (err) {
       console.log("\x1b[31m" + err.message + "\x1b[0m");
-      res.status(500).json({ message: "Ошибка получения бренда" });
+      res.status(500).json({ message: "Ошибка получения учетные данные" });
       return;
     }
 
@@ -101,7 +101,9 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).send("Неверные учетные данные");
     }
 
-    res.json(results[0]); // Отправляем данные на фронтенд
+    // console.log(results[0])
+
+    res.json({ user: results[0], token: results[0].id }); // Отправляем данные на фронтенд
   });
 });
 
@@ -254,7 +256,7 @@ app.get("/api/tradein", (req, res) => {
       discount
     FROM tradein_product_view
   `;
-  
+
   db.query(query, (err, results) => {
     if (err) {
       console.error("Ошибка при получении trade-in товаров:", err);

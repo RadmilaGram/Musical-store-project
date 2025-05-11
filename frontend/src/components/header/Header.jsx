@@ -1,7 +1,6 @@
 // src/components/Header.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
 import {
   AppBar,
   Toolbar,
@@ -11,9 +10,10 @@ import {
   Button,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import LoginIcon from '@mui/icons-material/Login';
 
 import logo from "/title_icon.png";
-import { clearUser } from "../../store/userSlice";
+import { useAuth, useLogout } from '../../hooks/useAuth'
 import "./Header.css";
 
 const pages = [
@@ -24,13 +24,17 @@ const pages = [
 ];
 
 export default function Header() {
-  const user = useSelector((state) => state.user.user);
-  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    dispatch(clearUser());
+  const { isLoggedIn, user } = useAuth()
+  const logout = useLogout()
+
+  const handleLogin = () => {
     navigate("/login");
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -65,13 +69,21 @@ export default function Header() {
               </Button>
             );
           })}
-          {user && (
+          {isLoggedIn ? (
             <Button
               startIcon={<LogoutIcon />}
               color="inherit"
               onClick={handleLogout}
             >
               Logout
+            </Button>
+          ):(
+            <Button
+              startIcon={<LoginIcon />}
+              color="inherit"
+              onClick={handleLogin}
+            >
+              Log in
             </Button>
           )}
         </Stack>
