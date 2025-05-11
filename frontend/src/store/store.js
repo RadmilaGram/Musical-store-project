@@ -1,11 +1,11 @@
+// src/store/store.js
 import { configureStore } from "@reduxjs/toolkit";
+import authReducer from "./authSlice";
 import tradeInReducer from "./tradeInSlice";
 import cartReducer from "./cartSlice";
-import authReducer from "./authSlice";
+import { loadState, saveState } from "./persist";
 
-// Попытка прочитать сохранённый auth из localStorage
-const savedAuth = localStorage.getItem("auth");
-const preloadedAuth = savedAuth ? JSON.parse(savedAuth) : undefined;
+const preloadedState = loadState();
 
 const store = configureStore({
   reducer: {
@@ -13,27 +13,12 @@ const store = configureStore({
     tradeIn: tradeInReducer,
     cart: cartReducer,
   },
-  preloadedState: {
-    auth: preloadedAuth,
-  },
+  preloadedState, // если undefined — RTK подхватит initialState из каждого слайса
 });
 
+// Подписка: при любом изменении сохраняем три слайса
 store.subscribe(() => {
-  const { auth } = store.getState();
-  if (auth.isLoggedIn) {
-    // сохраняем весь объект auth
-    localStorage.setItem(
-      "auth",
-      JSON.stringify({
-        user: auth.user,
-        token: auth.token,
-        isLoggedIn: true,
-      })
-    );
-  } else {
-    // при логауте или сбросе — удаляем
-    localStorage.removeItem("auth");
-  }
+  saveState(store.getState());
 });
 
 export default store;
