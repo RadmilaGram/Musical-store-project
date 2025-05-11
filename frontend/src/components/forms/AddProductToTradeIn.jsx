@@ -85,7 +85,10 @@ export default function AddProductToTradeIn() {
           control={control}
           name="productId"
           label="Product"
-          options={filteredProducts.map((p) => ({ id: p.id, name: p.name }))}
+          options={filteredProducts.map((p) => ({
+            id: p.id,
+            name: p.name + " -- Actual price: $" + p.price,
+          }))}
           disabled={!brandId}
         />
 

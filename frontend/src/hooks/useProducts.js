@@ -9,16 +9,18 @@ export const useProducts = () => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/product-view`) 
+      .get(`${API_URL}/api/product-view`)
       .then((res) => {
-        console.log("Ответ от сервера:", res.data);
-        const products = Array.isArray(res.data) ? res.data : res.data.products || [];
+        // console.log("Ответ от сервера:", res.data);
+        const products = Array.isArray(res.data)
+          ? res.data
+          : res.data.products || [];
         const parsed = products.map((p) => ({
           ...p,
           special_fields: p.special_fields ? JSON.parse(p.special_fields) : {},
         }));
-        
-        console.log("Parsed:", res.data);
+
+        // console.log("Parsed:", res.data);
         setData(parsed);
       })
       .catch((err) => {

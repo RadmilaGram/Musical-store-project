@@ -222,7 +222,7 @@ app.get("/api/TypeSpecialFields", (req, res) => {
 });
 
 app.get("/api/product-view", async (req, res) => {
-  console.log("get products");
+  // console.log("get products");
   const query = `
     SELECT 
       *
