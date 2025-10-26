@@ -1,6 +1,5 @@
-// src/components/Header.jsx
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -10,32 +9,37 @@ import {
   Button,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
-import LoginIcon from '@mui/icons-material/Login';
+import LoginIcon from "@mui/icons-material/Login";
 
 import logo from "/title_icon.png";
-import { useAuth, useLogout } from '../../hooks/useAuth'
+import { useAuth, useLogout } from "../../hooks/useAuth";
+import { useLoginModal } from "../../hooks/useLoginModal";
 import "./Header.css";
 
-const pages = [
-  { menuTitle: "Catalog", pageURL: "/" },
-  { menuTitle: "Cart", pageURL: "/Cart" },
-  { menuTitle: "Trade-in", pageURL: "/Trade-in" },
-  { menuTitle: "Admin", pageURL: "/Admin" },
-];
-
 export default function Header() {
-  const navigate = useNavigate();
+  const { isLoggedIn, user } = useAuth();
+  const logout = useLogout();
+  const { open } = useLoginModal();
 
-  const { isLoggedIn, user } = useAuth()
-  const logout = useLogout()
+  const role = Number(user?.role); // 🔒 привели к числу 1/2/...
 
-  const handleLogin = () => {
-    navigate("/login");
-  };
+  // базовое меню — как у тебя было
+  const basePages = [
+    { menuTitle: "Catalog", pageURL: "/" },
+    { menuTitle: "Cart", pageURL: "/Cart" },
+    { menuTitle: "Trade-in", pageURL: "/Trade-in" },
+  ];
 
-  const handleLogout = () => {
-    logout();
-  };
+  // Admin видит Admin; Courier (2) — свою зону; Admin также видит Courier
+  if (role === 1) {
+    basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });
+    basePages.push({ menuTitle: "Courier", pageURL: "/courier" }); // ← можно убрать, если пока не нужен
+  } else if (role === 2) {
+    basePages.push({ menuTitle: "Courier", pageURL: "/courier" });
+  }
+
+  const handleLogin = () => open();
+  const handleLogout = () => logout();
 
   return (
     <AppBar position="static" className="headerLine">
@@ -50,25 +54,24 @@ export default function Header() {
         >
           <img src={logo} className="logo" alt="logo" />
         </IconButton>
+
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           Music Way
         </Typography>
+
         <Stack direction="row" spacing={2} alignItems="center">
-          {pages.map((page, index) => {
-            const { menuTitle, pageURL } = page;
-            if (menuTitle === "Admin" && user?.role !== 1) return null;
-            return (
-              <Button
-                key={index}
-                component={Link}
-                to={pageURL}
-                variant="text"
-                color="inherit"
-              >
-                {menuTitle}
-              </Button>
-            );
-          })}
+          {basePages.map(({ menuTitle, pageURL }, idx) => (
+            <Button
+              key={idx}
+              component={Link}
+              to={pageURL}
+              variant="text"
+              color="inherit"
+            >
+              {menuTitle}
+            </Button>
+          ))}
+
           {isLoggedIn ? (
             <Button
               startIcon={<LogoutIcon />}
@@ -77,7 +80,7 @@ export default function Header() {
             >
               Logout
             </Button>
-          ):(
+          ) : (
             <Button
               startIcon={<LoginIcon />}
               color="inherit"

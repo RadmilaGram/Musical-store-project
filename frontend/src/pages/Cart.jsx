@@ -5,6 +5,7 @@ import ProductCard from "../components/ProductCard";
 import { placeOrder } from "../utils/apiService/ApiService";
 import { useTradeIn } from "../hooks/useTradeIn";
 import { useCart } from "../hooks/useCart";
+import ProtectedActionButton from "../components/ProtectedActionButton";
 
 export default function Cart() {
   const { items: cartItems, clear, total: purchaseTotal } = useCart();
@@ -110,14 +111,12 @@ export default function Cart() {
             </Box>
           )}
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handlePlaceOrder}
-            disabled={loading}
+          <ProtectedActionButton
+            onAuthedClick={handlePlaceOrder}
+            isLoading={loading}
           >
             {loading ? "Placing Order..." : "Place Order"}
-          </Button>
+          </ProtectedActionButton>
         </Stack>
       )}
     </Box>

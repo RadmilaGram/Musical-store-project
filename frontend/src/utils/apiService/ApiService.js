@@ -176,10 +176,10 @@ export const addSpecialFieldToProductType = async (formData) => {
 
 export const addTradeInProduct = async ({ product_id, discount }) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/tradein`,
-      { product_id, discount }
-    );
+    const response = await axios.post(`${API_URL}/api/tradein`, {
+      product_id,
+      discount,
+    });
     return response.data;
   } catch (error) {
     console.error("Ошибка при добавлении специального поля:", error);
@@ -192,3 +192,10 @@ export async function placeOrder(payload) {
   return axios.post(`${API_URL}/api/orders`, payload);
 }
 
+export const loginByEmail = async ({ email, password }) => {
+  const { data } = await axios.post(`${API_URL}/api/login`, {
+    email,
+    password,
+  });
+  return data; // { user, token }
+};
