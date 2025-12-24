@@ -13,12 +13,14 @@ import AddSpecialFieldToProductType from "../components/forms/AddSpecialFieldToP
 import AddProductToTradeIn from "../features/tradein/components/AddProductToTradeIn";
 import BrandsSection from "./admin/sections/BrandsSection/BrandsSection";
 import ProductTypesSection from "./admin/sections/ProductTypesSection/ProductTypesSection";
+import SpecialFieldsSection from "./admin/sections/SpecialFieldsSection/SpecialFieldsSection";
 
 function Admin() {
   return (
     <>
       <BrandsSection />
       <ProductTypesSection />
+      <SpecialFieldsSection />
       <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
         <Typography variant="h2" component="h2">
           Admin
