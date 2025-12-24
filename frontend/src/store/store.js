@@ -5,6 +5,7 @@ import tradeInReducer from "./tradeInSlice";
 import ui from "./uiSlice";
 import cartReducer from "./cartSlice";
 import adminBrandsReducer from "../features/admin/brands/brandsSlice";
+import adminProductTypesReducer from "../features/admin/productTypes/productTypesSlice";
 import { loadState, saveState } from "./persist";
 
 const preloadedState = loadState();
@@ -16,6 +17,7 @@ const store = configureStore({
     cart: cartReducer,
     ui: ui,
     adminBrands: adminBrandsReducer,
+    adminProductTypes: adminProductTypesReducer,
   },
   preloadedState, // если undefined — RTK подхватит initialState из каждого слайса
 });

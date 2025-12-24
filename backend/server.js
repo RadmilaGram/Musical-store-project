@@ -5,6 +5,7 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const fs = require("fs");
 const createBrandsRouter = require("./routes/brands.routes");
+const createProductTypesRouter = require("./routes/productTypes.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -46,6 +47,7 @@ db.connect((err) => {
 });
 
 app.use("/api/brands", createBrandsRouter(db));
+app.use("/api/product-types", createProductTypesRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,

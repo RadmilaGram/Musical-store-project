@@ -12,11 +12,13 @@ import AddSpecialFieldDefaultValueForm from "../components/forms/AddSpecialField
 import AddSpecialFieldToProductType from "../components/forms/AddSpecialFieldToProductType";
 import AddProductToTradeIn from "../features/tradein/components/AddProductToTradeIn";
 import BrandsSection from "./admin/sections/BrandsSection/BrandsSection";
+import ProductTypesSection from "./admin/sections/ProductTypesSection/ProductTypesSection";
 
 function Admin() {
   return (
     <>
       <BrandsSection />
+      <ProductTypesSection />
       <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
         <Typography variant="h2" component="h2">
           Admin
