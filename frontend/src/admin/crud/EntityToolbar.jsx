@@ -18,6 +18,7 @@ export default function EntityToolbar({
   onCreateClick,
   onRefreshClick,
   isRefreshing = false,
+  disableCreate = false,
 }) {
   return (
     <Box sx={{ mb: 2 }}>
@@ -48,6 +49,7 @@ export default function EntityToolbar({
             variant="contained"
             startIcon={<AddIcon />}
             onClick={onCreateClick}
+            disabled={disableCreate}
           >
             Create
           </Button>

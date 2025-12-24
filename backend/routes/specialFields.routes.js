@@ -14,11 +14,12 @@ const errorResponse = (res, status, message, details) => {
   return res.status(status).json(payload);
 };
 
-const validateName = (value) => {
-  if (typeof value !== "string") return null;
+const normalizeString = (value) => {
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
-  return trimmed.length ? trimmed : null;
+  return trimmed.length ? trimmed : undefined;
 };
+
 
 const validateDatatypeId = (value) => {
   const parsed = Number(value);
@@ -28,13 +29,14 @@ const validateDatatypeId = (value) => {
   return parsed;
 };
 
-const parseIdParam = (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    errorResponse(res, 400, "Invalid special field id");
+const parseNumericParam = (req, res, paramName, label) => {
+  const raw = req.params[paramName];
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    errorResponse(res, 400, `Invalid ${label}`);
     return null;
   }
-  return id;
+  return value;
 };
 
 function createSpecialFieldsRouter(db) {
@@ -95,7 +97,7 @@ function createSpecialFieldsRouter(db) {
   });
 
   router.get("/:id", async (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res, "id", "special field id");
     if (!id) return;
     try {
       const field = await fetchFieldById(id);
@@ -115,7 +117,7 @@ function createSpecialFieldsRouter(db) {
   });
 
   router.post("/", async (req, res) => {
-    const name = validateName(req.body?.name);
+    const name = normalizeString(req.body?.name);
     const datatypeId = validateDatatypeId(req.body?.datatypeId);
 
     if (!name) {
@@ -173,10 +175,10 @@ function createSpecialFieldsRouter(db) {
   });
 
   router.put("/:id", async (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res, "id", "special field id");
     if (!id) return;
 
-    const name = validateName(req.body?.name);
+    const name = normalizeString(req.body?.name);
     const datatypeId = validateDatatypeId(req.body?.datatypeId);
 
     if (!name) {
@@ -237,7 +239,7 @@ function createSpecialFieldsRouter(db) {
   });
 
   router.delete("/:id", (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res, "id", "special field id");
     if (!id) return;
 
     db.query("DELETE FROM special_field WHERE id = ?", [id], (err, result) => {
@@ -262,6 +264,175 @@ function createSpecialFieldsRouter(db) {
       }
       return success(res, { id });
     });
+  });
+
+  const parseValuePayload = (value, res) => {
+    if (typeof value !== "string") {
+      errorResponse(res, 400, "Value is required");
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      errorResponse(res, 400, "Value is required");
+      return null;
+    }
+    return trimmed;
+  };
+
+  router.get("/:fieldId/values", (req, res) => {
+    const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
+    if (!fieldId) return;
+
+    db.query(
+      "SELECT value FROM special_field_values WHERE field_id = ? ORDER BY value ASC",
+      [fieldId],
+      (err, results) => {
+        if (err) {
+          console.error("Failed to fetch special field values:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to fetch special field values",
+            err.message
+          );
+        }
+        return success(res, results);
+      }
+    );
+  });
+
+  router.post("/:fieldId/values", (req, res) => {
+    const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
+    if (!fieldId) return;
+    const value = parseValuePayload(req.body?.value, res);
+    if (!value) return;
+
+    db.query(
+      "INSERT INTO special_field_values (field_id, value) VALUES (?, ?)",
+      [fieldId, value],
+      (err) => {
+        if (err) {
+          if (err.code === DUP_ENTRY_CODE) {
+            return errorResponse(res, 409, "Value already exists");
+          }
+          console.error("Failed to create special field value:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to create special field value",
+            err.message
+          );
+        }
+        return success(res, { field_id: fieldId, value }, 201);
+      }
+    );
+  });
+
+  router.put("/:fieldId/values", (req, res) => {
+    const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
+    if (!fieldId) return;
+
+    const oldValue = parseValuePayload(req.body?.oldValue, res);
+    if (!oldValue) return;
+    const newValue = parseValuePayload(req.body?.newValue, res);
+    if (!newValue) return;
+
+    if (oldValue === newValue) {
+      return errorResponse(res, 400, "Values are the same");
+    }
+
+    db.beginTransaction((startErr) => {
+      if (startErr) {
+        console.error("Failed to start transaction:", startErr);
+        return errorResponse(
+          res,
+          500,
+          "Failed to update special field value",
+          startErr.message
+        );
+      }
+
+      const rollback = (rollbackErr, originalErr) => {
+        db.rollback(() => {
+          if (rollbackErr) {
+            console.error("Rollback error:", rollbackErr);
+          }
+          if (originalErr) {
+            console.error("Failed to update special field value:", originalErr);
+            if (originalErr.code === DUP_ENTRY_CODE) {
+              errorResponse(res, 409, "Value already exists");
+            } else {
+              errorResponse(
+                res,
+                500,
+                "Failed to update special field value",
+                originalErr.message
+              );
+            }
+          }
+        });
+      };
+
+      db.query(
+        "DELETE FROM special_field_values WHERE field_id = ? AND value = ?",
+        [fieldId, oldValue],
+        (deleteErr, deleteResult) => {
+          if (deleteErr) {
+            rollback(deleteErr, deleteErr);
+            return;
+          }
+          if (deleteResult.affectedRows === 0) {
+            rollback(null, null);
+            return errorResponse(res, 404, "Value not found");
+          }
+
+          db.query(
+            "INSERT INTO special_field_values (field_id, value) VALUES (?, ?)",
+            [fieldId, newValue],
+            (insertErr) => {
+              if (insertErr) {
+                rollback(insertErr, insertErr);
+                return;
+              }
+              db.commit((commitErr) => {
+                if (commitErr) {
+                  rollback(commitErr, commitErr);
+                  return;
+                }
+                return success(res, { field_id: fieldId, value: newValue });
+              });
+            }
+          );
+        }
+      );
+    });
+  });
+
+  router.delete("/:fieldId/values", (req, res) => {
+    const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
+    if (!fieldId) return;
+    const value = parseValuePayload(req.body?.value, res);
+    if (!value) return;
+
+    db.query(
+      "DELETE FROM special_field_values WHERE field_id = ? AND value = ?",
+      [fieldId, value],
+      (err, result) => {
+        if (err) {
+          console.error("Failed to delete special field value:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to delete special field value",
+            err.message
+          );
+        }
+        if (result.affectedRows === 0) {
+          return errorResponse(res, 404, "Value not found");
+        }
+        return success(res, { field_id: fieldId, value });
+      }
+    );
   });
 
   return router;
