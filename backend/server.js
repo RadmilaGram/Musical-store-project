@@ -415,10 +415,10 @@ app.post("/api/addSpecialFieldToProductType", (req, res) => {
 });
 
 app.post("/api/tradein", (req, res) => {
-  const { product_id, discount } = req.body;
-  const query = "INSERT INTO tradein ( product_id, discont) VALUES ( ?, ? )";
+  const { product_id, reference_price, base_discount_amount } = req.body;
+  const query = "INSERT INTO trade_in_catalog ( product_id, reference_price, base_discount_amount) VALUES ( ?, ?, ? )";
 
-  db.query(query, [product_id, discount], (err, result) => {
+  db.query(query, [product_id, reference_price, base_discount_amount], (err, result) => {
     if (err) {
       console.log(req.body);
       console.log("\x1b[31m" + err.message + "\x1b[0m");

@@ -10,7 +10,7 @@ import AddProductForm from "../components/forms/AddProductForm";
 import AddSpecialFieldForm from "../components/forms/AddSpecialFieldForm";
 import AddSpecialFieldDefaultValueForm from "../components/forms/AddSpecialFieldDefaultValueForm";
 import AddSpecialFieldToProductType from "../components/forms/AddSpecialFieldToProductType";
-import AddProductToTradeIn from "../components/forms/AddProductToTradeIn";
+import AddProductToTradeIn from "../features/tradein/components/AddProductToTradeIn";
 
 function Admin() {
   return (

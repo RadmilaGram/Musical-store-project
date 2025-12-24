@@ -10,6 +10,8 @@
     "nodemon": "^3.1.9"
   },
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "db:export": "node scripts/exportDb.js",
+    "db:reset": "node scripts/resetDb.js"
   }
 }

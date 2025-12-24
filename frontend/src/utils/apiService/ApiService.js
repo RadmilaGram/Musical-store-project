@@ -1,6 +1,7 @@
 import axios from "axios";
+import { API_BASE_URL } from "../../api/axiosInstance";
 
-export const API_URL = "http://localhost:5000";
+export const API_URL = API_BASE_URL;
 
 // Reading part ---------------------------------------------------------------------------------------
 
@@ -174,11 +175,16 @@ export const addSpecialFieldToProductType = async (formData) => {
   }
 };
 
-export const addTradeInProduct = async ({ product_id, discount }) => {
+export const addTradeInProduct = async ({
+  product_id,
+  reference_price,
+  base_discount_amount,
+}) => {
   try {
     const response = await axios.post(`${API_URL}/api/tradein`, {
       product_id,
-      discount,
+      reference_price,
+      base_discount_amount,
     });
     return response.data;
   } catch (error) {
