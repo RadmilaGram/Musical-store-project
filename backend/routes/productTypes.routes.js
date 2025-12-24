@@ -174,6 +174,14 @@ function createProductTypesRouter(db) {
 
     db.query("DELETE FROM product_type WHERE id = ?", [id], (err, result) => {
       if (err) {
+        console.error("Failed to delete product type:", err);
+        if (err.code === "ER_ROW_IS_REFERENCED_2") {
+          return errorResponse(
+            res,
+            409,
+            "Cannot delete: record is used by other entities"
+          );
+        }
         return errorResponse(
           res,
           500,

@@ -138,6 +138,14 @@ function createBrandsRouter(db) {
 
     db.query("DELETE FROM brand WHERE id = ?", [id], (err, result) => {
       if (err) {
+        console.error("Failed to delete brand:", err);
+        if (err.code === "ER_ROW_IS_REFERENCED_2") {
+          return errorResponse(
+            res,
+            409,
+            "Cannot delete: record is used by other entities"
+          );
+        }
         return errorResponse(res, 500, "Failed to delete brand", err.message);
       }
       if (result.affectedRows === 0) {

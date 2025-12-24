@@ -4,13 +4,16 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Alert, Box } from "@mui/material";
+import { Alert, Box, Snackbar } from "@mui/material";
 import EntityToolbar from "../../../../admin/crud/EntityToolbar";
 import CrudTable from "../../../../admin/crud/CrudTable";
 import RowActions from "../../../../admin/crud/RowActions";
 import ConfirmDialog from "../../../../admin/crud/ConfirmDialog";
 import { useBrandsCrud } from "../../../../features/admin/brands/useBrandsCrud";
 import BrandEditorDialog from "./BrandEditorDialog";
+
+const getErrorMessage = (error, fallback = "Failed to delete brand") =>
+  error?.response?.data?.message || error?.message || fallback;
 
 export default function BrandsSection() {
   const { items, status, error, ensureLoaded, reload, deleteBrand } =
@@ -21,6 +24,7 @@ export default function BrandsSection() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     ensureLoaded().catch(() => {});
@@ -42,6 +46,7 @@ export default function BrandsSection() {
 
   const handleDeleteRequest = useCallback((brand) => {
     setBrandToDelete(brand);
+    setDeleteError(null);
     setConfirmOpen(true);
   }, []);
 
@@ -54,6 +59,7 @@ export default function BrandsSection() {
     setConfirmOpen(false);
     setBrandToDelete(null);
     setIsDeleting(false);
+    setDeleteError(null);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
@@ -63,6 +69,7 @@ export default function BrandsSection() {
       await deleteBrand(brandToDelete.id);
       closeConfirm();
     } catch (err) {
+      setDeleteError(getErrorMessage(err));
       setIsDeleting(false);
     }
   }, [brandToDelete, deleteBrand, closeConfirm]);
@@ -138,6 +145,21 @@ export default function BrandsSection() {
         onClose={closeConfirm}
         loading={isDeleting}
       />
+      <Snackbar
+        open={Boolean(deleteError)}
+        autoHideDuration={5000}
+        onClose={() => setDeleteError(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          onClose={() => setDeleteError(null)}
+          sx={{ width: "100%" }}
+        >
+          {deleteError}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
