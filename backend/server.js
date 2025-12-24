@@ -4,6 +4,7 @@ const path = require("path");
 const mysql = require("mysql2");
 const cors = require("cors");
 const fs = require("fs");
+const createBrandsRouter = require("./routes/brands.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -43,6 +44,8 @@ db.connect((err) => {
   }
   console.log("Подключение к базе данных MySQL успешно");
 });
+
+app.use("/api/brands", createBrandsRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,
