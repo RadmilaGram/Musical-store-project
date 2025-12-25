@@ -1,6 +1,7 @@
 const express = require("express");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
+const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
 
 const success = (res, data, status = 200) =>
   res.status(status).json({ success: true, data });
@@ -19,13 +20,18 @@ const validateName = (name) => {
   return trimmed.length ? trimmed : null;
 };
 
-const parseIdParam = (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    errorResponse(res, 400, "Invalid product type id");
+const parseNumericParam = (
+  req,
+  res,
+  paramName = "id",
+  label = "product type id"
+) => {
+  const value = Number(req.params[paramName]);
+  if (!Number.isInteger(value) || value <= 0) {
+    errorResponse(res, 400, `Invalid ${label}`);
     return null;
   }
-  return id;
+  return value;
 };
 
 function createProductTypesRouter(db) {
@@ -64,7 +70,7 @@ function createProductTypesRouter(db) {
   });
 
   router.get("/:id", async (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res);
     if (!id) return;
     try {
       const productType = await fetchProductTypeById(id);
@@ -123,7 +129,7 @@ function createProductTypesRouter(db) {
   });
 
   router.put("/:id", (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res);
     if (!id) return;
 
     const name = validateName(req.body?.name);
@@ -169,13 +175,13 @@ function createProductTypesRouter(db) {
   });
 
   router.delete("/:id", (req, res) => {
-    const id = parseIdParam(req, res);
+    const id = parseNumericParam(req, res);
     if (!id) return;
 
     db.query("DELETE FROM product_type WHERE id = ?", [id], (err, result) => {
       if (err) {
         console.error("Failed to delete product type:", err);
-        if (err.code === "ER_ROW_IS_REFERENCED_2") {
+        if (err.code === FK_CONSTRAINT_CODE) {
           return errorResponse(
             res,
             409,
@@ -194,6 +200,33 @@ function createProductTypesRouter(db) {
       }
       return success(res, { id });
     });
+  });
+
+  router.get("/:typeId/special-fields", (req, res) => {
+    const typeId = parseNumericParam(req, res, "typeId", "typeId");
+    if (!typeId) return;
+
+    db.query(
+      `SELECT sf.id, sf.name, sf.datatype AS datatypeId, dt.name AS datatypeName
+       FROM product_type_special_field ptsf
+       JOIN special_field sf ON sf.id = ptsf.spec_fild_id
+       LEFT JOIN special_field_datatype dt ON dt.id = sf.datatype
+       WHERE ptsf.type_id = ?
+       ORDER BY sf.id DESC`,
+      [typeId],
+      (err, results) => {
+        if (err) {
+          console.error("Failed to fetch special fields for type:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to fetch special fields for product type",
+            err.message
+          );
+        }
+        return success(res, results);
+      }
+    );
   });
 
   return router;

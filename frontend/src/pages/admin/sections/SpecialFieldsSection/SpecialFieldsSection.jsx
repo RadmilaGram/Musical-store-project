@@ -4,13 +4,15 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Alert, Box, Snackbar } from "@mui/material";
+import { Alert, Box, MenuItem, Snackbar, TextField } from "@mui/material";
 import EntityToolbar from "../../../../admin/crud/EntityToolbar";
 import CrudTable from "../../../../admin/crud/CrudTable";
 import RowActions from "../../../../admin/crud/RowActions";
 import ConfirmDialog from "../../../../admin/crud/ConfirmDialog";
 import { useSpecialFieldDatatypesCrud } from "../../../../features/admin/specialFieldDatatypes/useSpecialFieldDatatypesCrud";
 import { useSpecialFieldsCrud } from "../../../../features/admin/specialFields/useSpecialFieldsCrud";
+import { useProductTypesCrud } from "../../../../features/admin/productTypes/useProductTypesCrud";
+import { productTypeSpecialFieldsApi } from "../../../../api/productTypeSpecialFieldsApi";
 import SpecialFieldEditorDrawer from "./SpecialFieldEditorDrawer";
 
 const getErrorMessage = (
@@ -33,6 +35,8 @@ export default function SpecialFieldsSection() {
     reload,
     deleteSpecialField,
   } = useSpecialFieldsCrud();
+  const { items: productTypes, ensureLoaded: ensureProductTypes } =
+    useProductTypesCrud();
 
   const [searchValue, setSearchValue] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -41,6 +45,10 @@ export default function SpecialFieldsSection() {
   const [fieldToDelete, setFieldToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [selectedTypeId, setSelectedTypeId] = useState("");
+  const [assignedFields, setAssignedFields] = useState([]);
+  const [assignedLoading, setAssignedLoading] = useState(false);
+  const [assignedError, setAssignedError] = useState(null);
 
   useEffect(() => {
     ensureDatatypes().catch(() => {});
@@ -49,6 +57,34 @@ export default function SpecialFieldsSection() {
   useEffect(() => {
     ensureLoaded().catch(() => {});
   }, [ensureLoaded]);
+
+  useEffect(() => {
+    ensureProductTypes().catch(() => {});
+  }, [ensureProductTypes]);
+
+  const loadAssignedFields = useCallback(async () => {
+    if (!selectedTypeId) {
+      setAssignedFields([]);
+      setAssignedError(null);
+      return;
+    }
+    setAssignedLoading(true);
+    setAssignedError(null);
+    try {
+      const data = await productTypeSpecialFieldsApi.listByType(
+        selectedTypeId
+      );
+      setAssignedFields(data || []);
+    } catch (err) {
+      setAssignedError(getErrorMessage(err, "Failed to load special fields"));
+    } finally {
+      setAssignedLoading(false);
+    }
+  }, [selectedTypeId]);
+
+  useEffect(() => {
+    loadAssignedFields().catch(() => {});
+  }, [loadAssignedFields]);
 
   const handleSearchChange = useCallback((event) => {
     setSearchValue(event.target.value);
@@ -94,27 +130,30 @@ export default function SpecialFieldsSection() {
     }
   }, [deleteSpecialField, fieldToDelete, closeConfirm]);
 
+  const displayedFields = selectedTypeId ? assignedFields : items;
+
   const filteredRows = useMemo(() => {
     const query = (searchValue || "").trim().toLowerCase();
-    if (!query) {
-      return items;
-    }
-    return items.filter((field) =>
-      field.name?.toLowerCase().includes(query)
-    );
-  }, [items, searchValue]);
+    const base = displayedFields || [];
+    const filtered = query
+      ? base.filter((field) => field.name?.toLowerCase().includes(query))
+      : base;
+    return filtered;
+  }, [displayedFields, searchValue]);
+
+  const datatypeMap = useMemo(() => {
+    const map = {};
+    datatypeItems.forEach((dt) => {
+      map[dt.id] = dt.name;
+    });
+    return map;
+  }, [datatypeItems]);
 
   const columns = useMemo(
     () => [
       { field: "id", headerName: "ID", width: 90 },
       { field: "name", headerName: "Name", flex: 1 },
-      {
-        field: "datatypeName",
-        headerName: "Datatype",
-        flex: 1,
-        valueGetter: (params) =>
-          (params?.row && params.row.datatypeName) || "—",
-      },
+      { field: "datatypeDisplay", headerName: "Datatype", flex: 1 },
       {
         field: "actions",
         headerName: "Actions",
@@ -132,7 +171,36 @@ export default function SpecialFieldsSection() {
     [handleDeleteRequest, handleEditRequest]
   );
 
-  const isLoading = status === "loading" || datatypesStatus === "loading";
+  const tableRows = useMemo(
+    () =>
+      filteredRows.map((field) => ({
+        ...field,
+        datatypeDisplay:
+          field.datatypeName ||
+          datatypeMap[field.datatypeId] ||
+          "—",
+      })),
+    [filteredRows, datatypeMap]
+  );
+
+  const isLoading =
+    status === "loading" ||
+    datatypesStatus === "loading" ||
+    (Boolean(selectedTypeId) && assignedLoading);
+
+  const handleTypeFilterChange = useCallback((event) => {
+    setSelectedTypeId(event.target.value);
+    setAssignedFields([]);
+    setAssignedError(null);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    if (selectedTypeId) {
+      loadAssignedFields();
+    } else {
+      reload();
+    }
+  }, [selectedTypeId, loadAssignedFields, reload]);
 
   return (
     <Box sx={{ mb: 4, maxWidth: 900, mx: "auto" }}>
@@ -141,17 +209,33 @@ export default function SpecialFieldsSection() {
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
         onCreateClick={handleCreateClick}
-        onRefreshClick={() => reload()}
+        onRefreshClick={handleRefresh}
         isRefreshing={isLoading}
+        filtersSlot={
+          <TextField
+            select
+            fullWidth
+            label="Product Type"
+            value={selectedTypeId}
+            onChange={handleTypeFilterChange}
+          >
+            <MenuItem value="">All types</MenuItem>
+            {productTypes.map((type) => (
+              <MenuItem key={type.id} value={type.id}>
+                {type.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        }
       />
 
-      {(error || datatypesError) && (
+      {(error || datatypesError || assignedError) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error || datatypesError}
+          {error || datatypesError || assignedError}
         </Alert>
       )}
 
-      <CrudTable rows={filteredRows} columns={columns} loading={isLoading} />
+      <CrudTable rows={tableRows} columns={columns} loading={isLoading} />
 
       <SpecialFieldEditorDrawer
         open={editorOpen}

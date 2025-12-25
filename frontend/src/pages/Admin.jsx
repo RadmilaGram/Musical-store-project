@@ -14,7 +14,6 @@ import AddProductToTradeIn from "../features/tradein/components/AddProductToTrad
 import BrandsSection from "./admin/sections/BrandsSection/BrandsSection";
 import ProductTypesSection from "./admin/sections/ProductTypesSection/ProductTypesSection";
 import SpecialFieldsSection from "./admin/sections/SpecialFieldsSection/SpecialFieldsSection";
-import SpecialFieldValuesSection from "./admin/sections/SpecialFieldValuesSection/SpecialFieldValuesSection";
 
 function Admin() {
   return (
@@ -22,7 +21,6 @@ function Admin() {
       <BrandsSection />
       <ProductTypesSection />
       <SpecialFieldsSection />
-      <SpecialFieldValuesSection />
       <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
         <Typography variant="h2" component="h2">
           Admin

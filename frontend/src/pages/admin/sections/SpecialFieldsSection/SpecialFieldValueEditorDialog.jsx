@@ -9,8 +9,14 @@ export default function SpecialFieldValueEditorDialog({
   onClose,
   onSubmit,
 }) {
-  const { form, onSubmit: handleSubmitFactory, serverError, setServerError, isSubmitting, resetToDefault } =
-    useSpecialFieldValueForm();
+  const {
+    form,
+    onSubmit: submitHandlerFactory,
+    serverError,
+    setServerError,
+    isSubmitting,
+    resetToDefault,
+  } = useSpecialFieldValueForm();
   const {
     register,
     formState: { errors },
@@ -24,7 +30,7 @@ export default function SpecialFieldValueEditorDialog({
     }
   }, [open, value, resetToDefault, setServerError]);
 
-  const handleSubmit = handleSubmitFactory(async (newValue) => {
+  const handleSubmit = submitHandlerFactory(async (newValue) => {
     await onSubmit(newValue);
     onClose();
   });
