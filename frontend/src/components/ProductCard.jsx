@@ -9,8 +9,13 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { API_URL } from "../utils/apiService/ApiService";
 import { useCart } from "../hooks/useCart";
+import { normalizeSpecialFieldsForDisplay } from "../utils/specialFields/normalizeSpecialFieldsForDisplay";
 
-export default function ProductCard({ product, showRemove = false }) {
+export default function ProductCard({
+  product,
+  showRemove = false,
+  specialFieldsCatalog = [],
+}) {
   const [expanded, setExpanded] = useState(false);
   const [isOverflowed, setIsOverflowed] = useState(false);
   const [maxHeight, setMaxHeight] = useState(0);
@@ -24,10 +29,10 @@ export default function ProductCard({ product, showRemove = false }) {
     ? `${API_URL}${product.img}`
     : "/images/default-product.png";
 
-  const specs =
-    typeof product.special_fields === "string"
-      ? JSON.parse(product.special_fields)
-      : product.special_fields || {};
+  const specs = normalizeSpecialFieldsForDisplay(
+    product.special_fields,
+    specialFieldsCatalog
+  );
 
   const fullDesc = product.description || "";
 
@@ -92,14 +97,18 @@ export default function ProductCard({ product, showRemove = false }) {
           </Typography>
 
           <Box sx={{ mt: 1, columnCount: 2, columnGap: 2 }}>
-            {Object.entries(specs).map(([key, val]) => (
+            {specs.map((item) => (
               <Typography
-                key={key}
+                key={item.id}
                 variant="body2"
                 sx={{ breakInside: "avoid" }}
               >
-                <strong>{key}</strong>:{" "}
-                {typeof val === "boolean" ? (val ? "yes" : "no") : val}
+                <strong>{item.name || "—"}</strong>:{" "}
+                {typeof item.value === "boolean"
+                  ? item.value
+                    ? "yes"
+                    : "no"
+                  : String(item.value ?? "—")}
               </Typography>
             ))}
           </Box>
