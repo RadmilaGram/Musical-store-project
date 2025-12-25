@@ -13,6 +13,7 @@ import AddSpecialFieldToProductType from "../components/forms/AddSpecialFieldToP
 import AddProductToTradeIn from "../features/tradein/components/AddProductToTradeIn";
 import BrandsSection from "./admin/sections/BrandsSection/BrandsSection";
 import ProductTypesSection from "./admin/sections/ProductTypesSection/ProductTypesSection";
+import ProductStatusesSection from "./admin/sections/ProductStatusesSection/ProductStatusesSection";
 import SpecialFieldsSection from "./admin/sections/SpecialFieldsSection/SpecialFieldsSection";
 import ProductTypeSpecialFieldsSection from "./admin/sections/ProductTypeSpecialFieldsSection/ProductTypeSpecialFieldsSection";
 import ProductsSection from "./admin/sections/ProductsSection/ProductsSection";
@@ -22,6 +23,7 @@ function Admin() {
     <>
       <BrandsSection />
       <ProductTypesSection />
+      <ProductStatusesSection />
       <SpecialFieldsSection />
       <ProductTypeSpecialFieldsSection />
       <ProductsSection />

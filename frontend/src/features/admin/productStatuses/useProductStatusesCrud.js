@@ -61,11 +61,59 @@ export function useProductStatusesCrud() {
     [ensureLoaded]
   );
 
+  const createStatus = useCallback(
+    async (payload) => {
+      try {
+        await productStatusesApi.create(payload);
+        await reload();
+      } catch (err) {
+        dispatch(
+          setError(getErrorMessage(err, "Failed to create product status"))
+        );
+        throw err;
+      }
+    },
+    [reload, dispatch]
+  );
+
+  const updateStatus = useCallback(
+    async (id, payload) => {
+      try {
+        await productStatusesApi.update(id, payload);
+        await reload();
+      } catch (err) {
+        dispatch(
+          setError(getErrorMessage(err, "Failed to update product status"))
+        );
+        throw err;
+      }
+    },
+    [reload, dispatch]
+  );
+
+  const deleteStatus = useCallback(
+    async (id) => {
+      try {
+        await productStatusesApi.remove(id);
+        await reload();
+      } catch (err) {
+        dispatch(
+          setError(getErrorMessage(err, "Failed to delete product status"))
+        );
+        throw err;
+      }
+    },
+    [reload, dispatch]
+  );
+
   return {
     items,
     status,
     error,
     ensureLoaded,
     reload,
+    createStatus,
+    updateStatus,
+    deleteStatus,
   };
 }
