@@ -7,19 +7,25 @@ import React, {
 import {
   Alert,
   Box,
+  Button,
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   MenuItem,
+  Snackbar,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
+import UploadIcon from "@mui/icons-material/Upload";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import EditorDrawer from "../../../../admin/crud/EditorDrawer";
 import productTypeSpecialFieldsApi from "../../../../api/productTypeSpecialFieldsApi";
+import uploadApi from "../../../../api/uploadApi";
+import { API_URL } from "../../../../utils/apiService/ApiService";
 
 const defaultValues = {
   name: "",
@@ -168,6 +174,8 @@ export default function ProductEditorDrawer({
   const [assignedFields, setAssignedFields] = useState([]);
   const [assignedLoading, setAssignedLoading] = useState(false);
   const [assignedError, setAssignedError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
 
   const catalogById = useMemo(() => {
     const map = {};
@@ -441,6 +449,46 @@ export default function ProductEditorDrawer({
     );
   };
 
+  const closeSnackbar = useCallback(() => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const handleImageUpload = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setUploading(true);
+      try {
+        const data = await uploadApi.uploadImage(file);
+        const imageUrl = data?.image_url;
+        if (imageUrl) {
+          setValue("img", imageUrl, { shouldDirty: true });
+          setSnackbar({
+            open: true,
+            message: "Image uploaded",
+            severity: "success",
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: "Upload response missing image_url",
+            severity: "error",
+          });
+        }
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: getErrorMessage(error, "Failed to upload image"),
+          severity: "error",
+        });
+      } finally {
+        setUploading(false);
+        event.target.value = null;
+      }
+    },
+    [setValue]
+  );
+
   return (
     <EditorDrawer
       open={open}
@@ -468,13 +516,48 @@ export default function ProductEditorDrawer({
           error={!!errors.description}
           helperText={errors.description?.message}
         />
-        <TextField
-          label="Image URL"
-          fullWidth
-          {...register("img")}
-          error={!!errors.img}
-          helperText={errors.img?.message}
-        />
+        <Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TextField
+              label="Image URL"
+              fullWidth
+              InputProps={{ readOnly: true }}
+              {...register("img")}
+              error={!!errors.img}
+              helperText={errors.img?.message}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              id="product-image-upload"
+              style={{ display: "none" }}
+              onChange={handleImageUpload}
+              disabled={uploading}
+            />
+            <label htmlFor="product-image-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                startIcon={<UploadIcon />}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Upload"}
+              </Button>
+            </label>
+            {uploading && <CircularProgress size={24} />}
+          </Stack>
+          {watch("img") && (
+            <Box sx={{ mt: 1 }}>
+              <Typography variant="body2">Preview:</Typography>
+              <Box
+                component="img"
+                src={`${API_URL}${watch("img")}`}
+                alt="Product"
+                sx={{ mt: 1, maxHeight: 180, borderRadius: 1 }}
+              />
+            </Box>
+          )}
+        </Box>
         <TextField
           label="Price"
           type="number"
@@ -570,6 +653,20 @@ export default function ProductEditorDrawer({
           {renderSpecialFields()}
         </Box>
       </Stack>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={closeSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={closeSnackbar}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </EditorDrawer>
   );
 }

@@ -320,6 +320,16 @@ app.post("/api/addProdType", (req, res) => {
   });
 });
 
+app.post("/api/upload", upload.single("img"), (req, res) => {
+  if (!req.file) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Image file is required" });
+  }
+  const imageUrl = `/uploads/${req.file.filename}`;
+  return res.json({ success: true, data: { image_url: imageUrl } });
+});
+
 app.post("/api/addProduct", upload.single("img"), (req, res) => {
   const {
     name,
