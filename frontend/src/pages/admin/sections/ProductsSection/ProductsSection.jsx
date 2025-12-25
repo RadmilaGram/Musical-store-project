@@ -7,6 +7,7 @@ import React, {
 import {
   Alert,
   Box,
+  Button,
   MenuItem,
   Snackbar,
   Stack,
@@ -129,23 +130,65 @@ export default function ProductsSection() {
     }
   }, [productToDelete, deleteProduct, closeConfirm]);
 
-  const filteredRows = useMemo(() => {
+  const { filteredRows, brandCounts, typeCounts, statusCounts } = useMemo(() => {
     const query = (searchValue || "").trim().toLowerCase();
-    return (products || []).filter((product) => {
-      if (query && !product.name?.toLowerCase().includes(query)) {
-        return false;
+    const toKey = (value) =>
+      value === null || typeof value === "undefined" ? "" : String(value);
+
+    const matchesSearch = (product) =>
+      !query || product.name?.toLowerCase().includes(query);
+
+    const brandCountsMap = {};
+    const typeCountsMap = {};
+    const statusCountsMap = {};
+    const filtered = [];
+
+    (products || []).forEach((product) => {
+      const matchesSearchValue = matchesSearch(product);
+
+      if (
+        matchesSearchValue &&
+        (!typeFilter || String(product.typeId) === typeFilter) &&
+        (!statusFilter || String(product.statusId) === statusFilter)
+      ) {
+        const key = toKey(product.brandId);
+        brandCountsMap[key] = (brandCountsMap[key] || 0) + 1;
       }
-      if (brandFilter && String(product.brandId) !== brandFilter) {
-        return false;
+
+      if (
+        matchesSearchValue &&
+        (!brandFilter || String(product.brandId) === brandFilter) &&
+        (!statusFilter || String(product.statusId) === statusFilter)
+      ) {
+        const key = toKey(product.typeId);
+        typeCountsMap[key] = (typeCountsMap[key] || 0) + 1;
       }
-      if (typeFilter && String(product.typeId) !== typeFilter) {
-        return false;
+
+      if (
+        matchesSearchValue &&
+        (!brandFilter || String(product.brandId) === brandFilter) &&
+        (!typeFilter || String(product.typeId) === typeFilter)
+      ) {
+        const key = toKey(product.statusId);
+        statusCountsMap[key] = (statusCountsMap[key] || 0) + 1;
       }
-      if (statusFilter && String(product.statusId) !== statusFilter) {
-        return false;
+
+      if (
+        matchesSearchValue &&
+        (!brandFilter || String(product.brandId) === brandFilter) &&
+        (!typeFilter || String(product.typeId) === typeFilter) &&
+        (!statusFilter || String(product.statusId) === statusFilter)
+      ) {
+        filtered.push(product);
       }
-      return true;
     });
+
+    return {
+      filteredRows: filtered,
+      brandCounts: brandCountsMap,
+      typeCounts: typeCountsMap,
+      statusCounts: statusCountsMap,
+    };
   }, [products, searchValue, brandFilter, typeFilter, statusFilter]);
 
   const columns = useMemo(
@@ -159,12 +202,18 @@ export default function ProductsSection() {
         field: "price",
         headerName: "Price",
         width: 130,
-        valueFormatter: ({ value }) =>
-          typeof value === "number"
-            ? `$${value.toFixed(2)}`
-            : value
-            ? `$${Number(value).toFixed(2)}`
-            : "—",
+        renderCell: (params) => {
+          const rawValue =
+            params?.row?.price ??
+            params?.row?.price_value ??
+            params?.value ??
+            null;
+          if (rawValue === null || rawValue === "") {
+            return "—";
+          }
+          const num = Number(rawValue);
+          return Number.isFinite(num) ? `$${num.toFixed(2)}` : rawValue;
+        },
       },
       {
         field: "actions",
@@ -185,54 +234,85 @@ export default function ProductsSection() {
 
   const isLoading = productsStatus === "loading";
 
+  const handleResetFilters = useCallback(() => {
+    setSearchValue("");
+    setBrandFilter("");
+    setTypeFilter("");
+    setStatusFilter("");
+  }, []);
+
+  const renderOptionLabel = (name, count) =>
+    `${name}${typeof count === "number" ? ` (${count})` : ""}`;
+
   const filtersSlot = (
-    <Stack
-      direction={{ xs: "column", sm: "row" }}
-      spacing={2}
-      sx={{ width: "100%" }}
-    >
-      <TextField
-        select
-        label="Brand"
-        value={brandFilter}
-        onChange={(event) => setBrandFilter(event.target.value)}
-        fullWidth
-      >
-        <MenuItem value="">All brands</MenuItem>
-        {brands.map((brand) => (
-          <MenuItem key={brand.id} value={String(brand.id)}>
-            {brand.name}
+    <Stack spacing={2} sx={{ width: "100%" }}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        <TextField
+          select
+          label="Brand"
+          value={brandFilter}
+          onChange={(event) => setBrandFilter(event.target.value)}
+          fullWidth
+        >
+          <MenuItem value="">
+            {renderOptionLabel("All brands", filteredRows.length)}
           </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        select
-        label="Product Type"
-        value={typeFilter}
-        onChange={(event) => setTypeFilter(event.target.value)}
-        fullWidth
-      >
-        <MenuItem value="">All types</MenuItem>
-        {productTypes.map((type) => (
-          <MenuItem key={type.id} value={String(type.id)}>
-            {type.name}
+          {brands.map((brand) => {
+            const value = String(brand.id);
+            const count = brandCounts[value] || 0;
+            return (
+              <MenuItem key={brand.id} value={value} disabled={count === 0}>
+                {renderOptionLabel(brand.name, count)}
+              </MenuItem>
+            );
+          })}
+        </TextField>
+        <TextField
+          select
+          label="Product Type"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+          fullWidth
+        >
+          <MenuItem value="">
+            {renderOptionLabel("All types", filteredRows.length)}
           </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        select
-        label="Status"
-        value={statusFilter}
-        onChange={(event) => setStatusFilter(event.target.value)}
-        fullWidth
-      >
-        <MenuItem value="">All statuses</MenuItem>
-        {productStatuses.map((status) => (
-          <MenuItem key={status.id} value={String(status.id)}>
-            {status.name}
+          {productTypes.map((type) => {
+            const value = String(type.id);
+            const count = typeCounts[value] || 0;
+            return (
+              <MenuItem key={type.id} value={value} disabled={count === 0}>
+                {renderOptionLabel(type.name, count)}
+              </MenuItem>
+            );
+          })}
+        </TextField>
+        <TextField
+          select
+          label="Status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          fullWidth
+        >
+          <MenuItem value="">
+            {renderOptionLabel("All statuses", filteredRows.length)}
           </MenuItem>
-        ))}
-      </TextField>
+          {productStatuses.map((status) => {
+            const value = String(status.id);
+            const count = statusCounts[value] || 0;
+            return (
+              <MenuItem key={status.id} value={value} disabled={count === 0}>
+                {renderOptionLabel(status.name, count)}
+              </MenuItem>
+            );
+          })}
+        </TextField>
+      </Stack>
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button variant="outlined" onClick={handleResetFilters}>
+          Reset filters
+        </Button>
+      </Box>
     </Stack>
   );
 
