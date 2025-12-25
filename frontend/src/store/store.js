@@ -8,6 +8,8 @@ import adminBrandsReducer from "../features/admin/brands/brandsSlice";
 import adminProductTypesReducer from "../features/admin/productTypes/productTypesSlice";
 import adminSpecialFieldDatatypesReducer from "../features/admin/specialFieldDatatypes/specialFieldDatatypesSlice";
 import adminSpecialFieldsReducer from "../features/admin/specialFields/specialFieldsSlice";
+import adminProductsReducer from "../features/admin/products/productsSlice";
+import adminProductStatusesReducer from "../features/admin/productStatuses/productStatusesSlice";
 import { loadState, saveState } from "./persist";
 
 const preloadedState = loadState();
@@ -22,6 +24,8 @@ const store = configureStore({
     adminProductTypes: adminProductTypesReducer,
     adminSpecialFieldDatatypes: adminSpecialFieldDatatypesReducer,
     adminSpecialFields: adminSpecialFieldsReducer,
+    adminProducts: adminProductsReducer,
+    adminProductStatuses: adminProductStatusesReducer,
   },
   preloadedState, // если undefined — RTK подхватит initialState из каждого слайса
 });
