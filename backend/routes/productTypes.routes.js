@@ -229,6 +229,120 @@ function createProductTypesRouter(db) {
     );
   });
 
+  router.get("/:typeId/special-field-assignments", (req, res) => {
+    const typeId = parseNumericParam(req, res, "typeId", "typeId");
+    if (!typeId) return;
+
+    db.query(
+      "SELECT spec_fild_id FROM product_type_special_field WHERE type_id = ?",
+      [typeId],
+      (err, results) => {
+        if (err) {
+          console.error("Failed to load special field assignments:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to load special field assignments",
+            err.message
+          );
+        }
+        const assignedFieldIds = results.map((row) => row.spec_fild_id);
+        return success(res, { assignedFieldIds });
+      }
+    );
+  });
+
+  router.put("/:typeId/special-field-assignments", (req, res) => {
+    const typeId = parseNumericParam(req, res, "typeId", "typeId");
+    if (!typeId) return;
+
+    const fieldIds = Array.isArray(req.body?.fieldIds)
+      ? req.body.fieldIds
+      : null;
+
+    if (!fieldIds) {
+      return errorResponse(res, 400, "fieldIds must be an array");
+    }
+
+    const normalized = fieldIds
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (fieldIds.length !== normalized.length) {
+      return errorResponse(res, 400, "fieldIds must contain valid IDs");
+    }
+
+    db.beginTransaction((startErr) => {
+      if (startErr) {
+        console.error("Failed to start transaction:", startErr);
+        return errorResponse(
+          res,
+          500,
+          "Failed to save assignments",
+          startErr.message
+        );
+      }
+
+      const rollback = (err) => {
+        db.rollback(() => {
+          if (err) {
+            console.error("Failed to save assignments:", err);
+            if (err.code === FK_CONSTRAINT_CODE) {
+              errorResponse(res, 409, "Invalid fieldIds");
+            } else {
+              errorResponse(
+                res,
+                500,
+                "Failed to save assignments",
+                err.message
+              );
+            }
+          }
+        });
+      };
+
+      db.query(
+        "DELETE FROM product_type_special_field WHERE type_id = ?",
+        [typeId],
+        (deleteErr) => {
+          if (deleteErr) {
+            rollback(deleteErr);
+            return;
+          }
+
+          if (!normalized.length) {
+            return db.commit((commitErr) => {
+              if (commitErr) {
+                rollback(commitErr);
+                return;
+              }
+              return success(res, { assignedFieldIds: [] });
+            });
+          }
+
+          const values = normalized.map((fieldId) => [typeId, fieldId]);
+          db.query(
+            "INSERT INTO product_type_special_field (type_id, spec_fild_id) VALUES ?",
+            [values],
+            (insertErr) => {
+              if (insertErr) {
+                rollback(insertErr);
+                return;
+              }
+              db.commit((commitErr) => {
+                if (commitErr) {
+                  rollback(commitErr);
+                  return;
+                }
+                return success(res, { assignedFieldIds: normalized });
+              });
+            }
+          );
+        }
+      );
+    });
+  });
+
   return router;
 }
 
