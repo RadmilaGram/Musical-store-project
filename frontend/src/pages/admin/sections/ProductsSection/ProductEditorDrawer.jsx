@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -24,6 +25,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import EditorDrawer from "../../../../admin/crud/EditorDrawer";
 import productTypeSpecialFieldsApi from "../../../../api/productTypeSpecialFieldsApi";
+import specialFieldValuesApi from "../../../../api/specialFieldValuesApi";
 import uploadApi from "../../../../api/uploadApi";
 import { API_URL } from "../../../../utils/apiService/ApiService";
 
@@ -42,7 +44,11 @@ const numberSelect = (label) =>
   yup
     .number()
     .transform((value, originalValue) => {
-      if (originalValue === "" || originalValue === null || originalValue === undefined) {
+      if (
+        originalValue === "" ||
+        originalValue === null ||
+        originalValue === undefined
+      ) {
         return NaN;
       }
       const parsed = Number(originalValue);
@@ -62,7 +68,11 @@ const productSchema = yup.object().shape({
   price: yup
     .number()
     .transform((value, originalValue) => {
-      if (originalValue === "" || originalValue === null || originalValue === undefined) {
+      if (
+        originalValue === "" ||
+        originalValue === null ||
+        originalValue === undefined
+      ) {
         return NaN;
       }
       const parsed = Number(originalValue);
@@ -81,21 +91,6 @@ const getErrorMessage = (error, fallback = "Failed to save product") =>
   error?.response?.data?.message || error?.message || fallback;
 
 const isNumericKey = (key) => /^\d+$/.test(key);
-
-const normalizeFieldValueForForm = (value, datatypeName) => {
-  const type = (datatypeName || "").toLowerCase();
-  if (type === "boolean") {
-    if (typeof value === "boolean") return value;
-    if (typeof value === "string") {
-      return value === "true" || value === "1";
-    }
-    return Boolean(value);
-  }
-  if (value === null || typeof value === "undefined") {
-    return "";
-  }
-  return String(value);
-};
 
 const castValueForSubmit = (value, datatypeName) => {
   const type = (datatypeName || "").toLowerCase();
@@ -119,43 +114,80 @@ const castValueForSubmit = (value, datatypeName) => {
   return value;
 };
 
-const convertSpecialFields = (raw, catalogById, catalogByName) => {
+const parseSpecialFieldsRaw = (raw) => {
   if (!raw) {
-    return {};
+    return null;
   }
-  let parsed;
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw;
+  }
+  if (typeof raw !== "string") {
+    return null;
+  }
   try {
-    parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
   } catch (err) {
     console.warn("Failed to parse special fields JSON", err);
+  }
+  return null;
+};
+
+const normalizeInitialValue = (value, datatypeName) => {
+  const type = (datatypeName || "").toLowerCase();
+  if (type === "boolean") {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value === "string") {
+      const trimmed = value.trim().toLowerCase();
+      if (!trimmed) return false;
+      return trimmed === "true" || trimmed === "1" || trimmed === "yes";
+    }
+    return Boolean(value);
+  }
+  if (type === "integer") {
+    const num = typeof value === "number" ? value : Number(value);
+    return Number.isNaN(num) ? "" : Math.trunc(num);
+  }
+  if (type === "decimal") {
+    const num = typeof value === "number" ? value : Number(value);
+    return Number.isNaN(num) ? "" : num;
+  }
+  return value == null ? "" : String(value);
+};
+
+const normalizeSpecialFieldsValues = (
+  rawValues,
+  assignedFieldsById,
+  assignedFieldsByName
+) => {
+  if (!rawValues || typeof rawValues !== "object") {
     return {};
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {};
-  }
-  const entries = Object.entries(parsed);
+
+  const entries = Object.entries(rawValues);
   if (!entries.length) {
     return {};
   }
-  const numericFormat = entries.every(([key]) => isNumericKey(key));
-  const result = {};
-  if (numericFormat) {
-    entries.forEach(([key, value]) => {
-      const meta = catalogById[key] || {};
-      result[key] = normalizeFieldValueForForm(value, meta.datatypeName);
-    });
-    return result;
-  }
-  entries.forEach(([name, value]) => {
-    const field = catalogByName[name];
+
+  const normalized = {};
+
+  entries.forEach(([key, value]) => {
+    const field =
+      (isNumericKey(key) && assignedFieldsById[String(key)]) ||
+      assignedFieldsByName[key];
     if (!field) {
-      console.warn(`Unknown special field "${name}", skipping`);
       return;
     }
-    const key = String(field.id);
-    result[key] = normalizeFieldValueForForm(value, field.datatypeName);
+    normalized[String(field.id)] = normalizeInitialValue(
+      value,
+      field.datatypeName
+    );
   });
-  return result;
+
+  return normalized;
 };
 
 export default function ProductEditorDrawer({
@@ -175,7 +207,18 @@ export default function ProductEditorDrawer({
   const [assignedLoading, setAssignedLoading] = useState(false);
   const [assignedError, setAssignedError] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+  const [fieldOptions, setFieldOptions] = useState({});
+  const [fieldOptionsReady, setFieldOptionsReady] = useState(false);
+  const [assignedLoaded, setAssignedLoaded] = useState(false);
+  const bootstrappingRef = useRef(false);
+  const userChangedTypeRef = useRef(false);
+  const lastTypeRef = useRef(null);
+  const initKeyRef = useRef(null);
 
   const catalogById = useMemo(() => {
     const map = {};
@@ -198,7 +241,10 @@ export default function ProductEditorDrawer({
   }, [specialFieldsCatalog]);
 
   const form = useForm({
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      specialFields: defaultValues.specialFields || {},
+    },
     resolver: yupResolver(productSchema),
   });
 
@@ -214,7 +260,7 @@ export default function ProductEditorDrawer({
   } = form;
 
   const typeIdValue = watch("typeId");
-  const specialFieldsValues = watch("specialFields");
+  const imageValue = watch("img");
 
   const assignedFieldsMap = useMemo(() => {
     const map = {};
@@ -224,72 +270,131 @@ export default function ProductEditorDrawer({
     return map;
   }, [assignedFields]);
 
-  const resetForm = useCallback(
-    (currentProduct) => {
-      if (currentProduct) {
-        const parsedSpecialFields = convertSpecialFields(
-          currentProduct.specialFieldsRaw,
-          catalogById,
-          catalogByName
-        );
-        reset({
-          name: currentProduct.name || "",
-          description: currentProduct.description || "",
-          img: currentProduct.img || "",
-          price:
-            typeof currentProduct.price === "number"
-              ? currentProduct.price.toString()
-              : currentProduct.price || "",
-          brandId: currentProduct.brandId || "",
-          statusId: currentProduct.statusId || "",
-          typeId: currentProduct.typeId || "",
-          specialFields: parsedSpecialFields,
-        });
-      } else {
-        reset(defaultValues);
+  const assignedFieldsNameMap = useMemo(() => {
+    const map = {};
+    (assignedFields || []).forEach((field) => {
+      if (field?.name) {
+        map[field.name] = field;
       }
-      setServerError(null);
-    },
-    [reset, catalogById, catalogByName]
-  );
+    });
+    return map;
+  }, [assignedFields]);
 
   const handleClose = useCallback(() => {
     onClose();
     reset(defaultValues);
     setAssignedFields([]);
     setAssignedError(null);
+    setFieldOptions({});
+    setFieldOptionsReady(false);
+    setAssignedLoaded(false);
+    bootstrappingRef.current = false;
+    userChangedTypeRef.current = false;
+    lastTypeRef.current = null;
+    initKeyRef.current = null;
   }, [onClose, reset]);
 
   useEffect(() => {
-    if (open) {
-      resetForm(product);
-    } else {
+    if (!open) {
       reset(defaultValues);
       setAssignedFields([]);
       setAssignedError(null);
+      setFieldOptions({});
+      setFieldOptionsReady(false);
+      setAssignedLoaded(false);
+      bootstrappingRef.current = false;
+      userChangedTypeRef.current = false;
+      lastTypeRef.current = null;
+      initKeyRef.current = null;
+      return;
     }
-  }, [open, product, resetForm, reset]);
+
+    if (product?.id) {
+      bootstrappingRef.current = true;
+      userChangedTypeRef.current = false;
+      lastTypeRef.current = product.typeId ?? "";
+      initKeyRef.current = null;
+      reset(
+        {
+          ...defaultValues,
+          name: product.name || "",
+          description: product.description || "",
+          img: product.img || "",
+          price:
+            typeof product.price === "number"
+              ? product.price.toString()
+              : product.price || "",
+          brandId: product.brandId || "",
+          statusId: product.statusId || "",
+          typeId: product.typeId || "",
+          specialFields: {},
+        },
+        { keepDirty: false }
+      );
+    } else {
+      bootstrappingRef.current = false;
+      userChangedTypeRef.current = false;
+      lastTypeRef.current = "";
+      reset(defaultValues, { keepDirty: false });
+    }
+    setServerError(null);
+  }, [open, product, reset]);
+
+  const loadFieldOptions = useCallback(async (typeId, fields) => {
+    setFieldOptionsReady(false);
+    const ids = (fields || [])
+      .map((field) => Number(field?.id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (!ids.length) {
+      setFieldOptions({});
+      setFieldOptionsReady(true);
+      return;
+    }
+
+    try {
+      const options = await specialFieldValuesApi.listBatch(ids);
+      setFieldOptions(options || {});
+      setFieldOptionsReady(true);
+    } catch (error) {
+      console.error("Failed to load special field values", error);
+      setFieldOptions({});
+      setFieldOptionsReady(true);
+    }
+  }, []);
 
   const loadAssignedFields = useCallback(
     async (typeId) => {
+      setAssignedLoaded(false);
       if (!typeId) {
         setAssignedFields([]);
         setAssignedError(null);
+        setFieldOptions({});
+        setFieldOptionsReady(true);
+        setAssignedLoaded(true);
         return;
       }
       setAssignedLoading(true);
       setAssignedError(null);
+      let fetched = [];
       try {
         const data = await productTypeSpecialFieldsApi.listByType(typeId);
-        setAssignedFields(data);
+        fetched = Array.isArray(data) ? data : [];
+        setAssignedFields(fetched);
+        await loadFieldOptions(typeId, fetched);
       } catch (error) {
         setAssignedFields([]);
-        setAssignedError(getErrorMessage(error, "Failed to load special fields"));
+        setAssignedError(
+          getErrorMessage(error, "Failed to load special fields")
+        );
+        setFieldOptions({});
+        setFieldOptionsReady(true);
       } finally {
         setAssignedLoading(false);
+        setAssignedLoaded(true);
       }
     },
-    []
+    [loadFieldOptions]
   );
 
   useEffect(() => {
@@ -297,6 +402,9 @@ export default function ProductEditorDrawer({
     if (!typeIdValue) {
       setAssignedFields([]);
       setAssignedError(null);
+      setFieldOptions({});
+      setFieldOptionsReady(true);
+      setAssignedLoaded(true);
       return;
     }
     loadAssignedFields(typeIdValue);
@@ -304,7 +412,34 @@ export default function ProductEditorDrawer({
 
   useEffect(() => {
     if (!open) return;
-    const allowedIds = new Set((assignedFields || []).map((field) => String(field.id)));
+    const currentType = typeIdValue ?? "";
+
+    if (bootstrappingRef.current) {
+      lastTypeRef.current = currentType;
+      return;
+    }
+
+    if (
+      lastTypeRef.current !== null &&
+      currentType !== lastTypeRef.current
+    ) {
+      userChangedTypeRef.current = true;
+    }
+
+    if (!userChangedTypeRef.current) {
+      lastTypeRef.current = currentType;
+      return;
+    }
+
+    setValue("specialFields", {}, { shouldDirty: true });
+    lastTypeRef.current = currentType;
+  }, [typeIdValue, open, setValue]);
+
+  useEffect(() => {
+    if (!open) return;
+    const allowedIds = new Set(
+      (assignedFields || []).map((field) => String(field.id))
+    );
     const currentValues = getValues("specialFields") || {};
     const filteredValues = {};
     let changed = false;
@@ -320,12 +455,70 @@ export default function ProductEditorDrawer({
     }
   }, [assignedFields, getValues, setValue, open]);
 
-  const handleSpecialFieldChange = useCallback(
-    (fieldId, value) => {
-      setValue(`specialFields.${fieldId}`, value, { shouldDirty: true });
-    },
-    [setValue]
-  );
+  useEffect(() => {
+    if (
+      !open ||
+      !product?.id ||
+      !bootstrappingRef.current ||
+      !typeIdValue ||
+      assignedLoading ||
+      !assignedLoaded ||
+      !fieldOptionsReady ||
+      !assignedFields.length
+    ) {
+      return;
+    }
+
+    const optionKeys = Object.keys(fieldOptions || {}).length;
+    const initKey = `${product.id}:${typeIdValue}:${assignedFields.length}:${optionKeys}`;
+    if (initKeyRef.current === initKey) {
+      return;
+    }
+
+    const parsed = parseSpecialFieldsRaw(product.specialFieldsRaw) || {};
+    const normalized = normalizeSpecialFieldsValues(
+      parsed,
+      assignedFieldsMap,
+      assignedFieldsNameMap
+    );
+
+    const currentValues = getValues();
+    reset(
+      {
+        ...currentValues,
+        name: product.name || "",
+        description: product.description || "",
+        img: product.img || "",
+        price:
+          typeof product.price === "number"
+            ? product.price.toString()
+            : product.price || "",
+        brandId: product.brandId || "",
+        statusId: product.statusId || "",
+        typeId: product.typeId || "",
+        specialFields: normalized,
+      },
+      { keepDirty: false }
+    );
+
+    bootstrappingRef.current = false;
+    userChangedTypeRef.current = false;
+    lastTypeRef.current = typeIdValue ?? "";
+    initKeyRef.current = initKey;
+  }, [
+    open,
+    product,
+    typeIdValue,
+    assignedLoading,
+    assignedLoaded,
+    fieldOptionsReady,
+    assignedFields,
+    fieldOptions,
+    assignedFieldsMap,
+    assignedFieldsNameMap,
+    reset,
+    getValues,
+  ]);
 
   const handleSubmitForm = handleSubmit(async (values) => {
     setServerError(null);
@@ -343,15 +536,15 @@ export default function ProductEditorDrawer({
       };
 
       const preparedSpecialFields = {};
-      Object.entries(values.specialFields || {}).forEach(([fieldId, rawValue]) => {
-        const meta =
-          assignedFieldsMap[fieldId] ||
-          catalogById[fieldId];
-        const normalized = castValueForSubmit(rawValue, meta?.datatypeName);
-        if (normalized !== null && typeof normalized !== "undefined") {
-          preparedSpecialFields[fieldId] = normalized;
+      Object.entries(values.specialFields || {}).forEach(
+        ([fieldId, rawValue]) => {
+          const meta = assignedFieldsMap[fieldId] || catalogById[fieldId];
+          const normalized = castValueForSubmit(rawValue, meta?.datatypeName);
+          if (normalized !== null && typeof normalized !== "undefined") {
+            preparedSpecialFields[fieldId] = normalized;
+          }
         }
-      });
+      );
       payload.specialFields = preparedSpecialFields;
 
       if (product?.id) {
@@ -386,14 +579,14 @@ export default function ProductEditorDrawer({
     }
 
     if (assignedError) {
-      return (
-        <Alert severity="error">{assignedError}</Alert>
-      );
+      return <Alert severity="error">{assignedError}</Alert>;
     }
 
     if (!assignedFields.length) {
       return (
-        <Alert severity="info">No special fields are assigned to this product type.</Alert>
+        <Alert severity="info">
+          No special fields are assigned to this product type.
+        </Alert>
       );
     }
 
@@ -402,21 +595,77 @@ export default function ProductEditorDrawer({
         {assignedFields.map((field) => {
           const fieldId = String(field.id);
           const type = (field.datatypeName || "").toLowerCase();
-          const value = specialFieldsValues?.[fieldId];
+          const options = fieldOptions[fieldId] || [];
+
+          if (options.length) {
+            return (
+              <Controller
+                key={field.id}
+                name={`specialFields.${fieldId}`}
+                control={control}
+                render={({ field: controllerField }) => {
+                  const uniqueOptions = Array.from(
+                    new Set(options.map((option) => String(option)))
+                  );
+                  const valueString =
+                    controllerField.value === null ||
+                    typeof controllerField.value === "undefined"
+                      ? ""
+                      : String(controllerField.value);
+                  const hasValue = valueString !== "";
+                  const includesValue = uniqueOptions.includes(valueString);
+                  const optionsWithCurrent =
+                    hasValue && !includesValue
+                      ? [valueString, ...uniqueOptions]
+                      : uniqueOptions;
+                  const helperText =
+                    hasValue && !includesValue
+                      ? "Current value not in predefined list"
+                      : undefined;
+
+                  return (
+                    <TextField
+                      select
+                      label={field.name}
+                      value={valueString}
+                      onChange={(event) =>
+                        controllerField.onChange(event.target.value)
+                      }
+                      fullWidth
+                      helperText={helperText}
+                    >
+                      <MenuItem value="">Select value</MenuItem>
+                      {optionsWithCurrent.map((option) => (
+                        <MenuItem key={`${fieldId}-${option}`} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  );
+                }}
+              />
+            );
+          }
 
           if (type === "boolean") {
             return (
-              <FormControlLabel
+              <Controller
                 key={field.id}
-                control={
-                  <Checkbox
-                    checked={Boolean(value)}
-                    onChange={(event) =>
-                      handleSpecialFieldChange(fieldId, event.target.checked)
+                name={`specialFields.${fieldId}`}
+                control={control}
+                render={({ field: controllerField }) => (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(controllerField.value)}
+                        onChange={(event) =>
+                          controllerField.onChange(event.target.checked)
+                        }
+                      />
                     }
+                    label={field.name}
                   />
-                }
-                label={field.name}
+                )}
               />
             );
           }
@@ -432,16 +681,22 @@ export default function ProductEditorDrawer({
           }
 
           return (
-            <TextField
+            <Controller
               key={field.id}
-              label={field.name}
-              type={inputType}
-              value={value ?? ""}
-              onChange={(event) =>
-                handleSpecialFieldChange(fieldId, event.target.value)
-              }
-              fullWidth
-              inputProps={inputProps}
+              name={`specialFields.${fieldId}`}
+              control={control}
+              render={({ field: controllerField }) => (
+                <TextField
+                  label={field.name}
+                  type={inputType}
+                  value={controllerField.value ?? ""}
+                  onChange={(event) =>
+                    controllerField.onChange(event.target.value)
+                  }
+                  fullWidth
+                  inputProps={inputProps}
+                />
+              )}
             />
           );
         })}
@@ -546,12 +801,12 @@ export default function ProductEditorDrawer({
             </label>
             {uploading && <CircularProgress size={24} />}
           </Stack>
-          {watch("img") && (
+          {imageValue && (
             <Box sx={{ mt: 1 }}>
               <Typography variant="body2">Preview:</Typography>
               <Box
                 component="img"
-                src={`${API_URL}${watch("img")}`}
+                src={`${API_URL}${imageValue}`}
                 alt="Product"
                 sx={{ mt: 1, maxHeight: 180, borderRadius: 1 }}
               />

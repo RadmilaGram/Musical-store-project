@@ -16,6 +16,16 @@ export const specialFieldValuesApi = {
     const response = await apiClient.get(`/api/special-fields/${fieldId}/values`);
     return unwrap(response);
   },
+  async listBatch(fieldIds = []) {
+    if (!fieldIds.length) {
+      return {};
+    }
+    const params = { fieldIds: fieldIds.join(",") };
+    const response = await apiClient.get("/api/special-fields/values", {
+      params,
+    });
+    return unwrap(response);
+  },
   async create(fieldId, payload) {
     const response = await apiClient.post(`/api/special-fields/${fieldId}/values`, payload);
     return unwrap(response);

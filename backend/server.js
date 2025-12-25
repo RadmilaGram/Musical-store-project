@@ -17,6 +17,7 @@ const SALT_ROUNDS = 12;
 const app = express(); // Инициализация Express
 app.use(cors()); // Настроим CORS для разрешения запросов с фронтенда
 app.use(express.json()); // Парсим JSON-данные из запросов
+app.use(express.urlencoded({ extended: true })); // Поддержка form-data без файлов
 app.use("/uploads", express.static("uploads")); // доступ к изображениям
 
 // Хранилище для изображений

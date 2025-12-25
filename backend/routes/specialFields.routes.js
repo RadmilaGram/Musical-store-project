@@ -42,6 +42,57 @@ const parseNumericParam = (req, res, paramName, label) => {
 function createSpecialFieldsRouter(db) {
   const router = express.Router();
 
+  router.get("/values", (req, res) => {
+    const raw = req.query.fieldIds;
+    if (!raw) {
+      return errorResponse(res, 400, "fieldIds query parameter is required");
+    }
+
+    const ids = Array.from(
+      new Set(
+        String(raw)
+          .split(",")
+          .map((part) => Number(part))
+          .filter((num) => Number.isInteger(num) && num > 0)
+      )
+    );
+
+    if (!ids.length) {
+      return success(res, {});
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+    db.query(
+      `SELECT field_id AS fieldId, value
+       FROM special_field_values
+       WHERE field_id IN (${placeholders})
+       ORDER BY field_id, value`,
+      ids,
+      (err, results) => {
+        if (err) {
+          console.error("Failed to fetch special field values:", err);
+          return errorResponse(
+            res,
+            500,
+            "Failed to fetch field values",
+            err.message
+          );
+        }
+
+        const grouped = results.reduce((acc, row) => {
+          const key = String(row.fieldId);
+          if (!acc[key]) {
+            acc[key] = [];
+          }
+          acc[key].push(row.value);
+          return acc;
+        }, {});
+
+        return success(res, grouped);
+      }
+    );
+  });
+
   const fetchDatatypeById = (datatypeId) =>
     new Promise((resolve, reject) => {
       db.query(
