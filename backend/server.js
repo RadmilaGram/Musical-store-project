@@ -6,6 +6,8 @@ const cors = require("cors");
 const fs = require("fs");
 const createBrandsRouter = require("./routes/brands.routes");
 const createProductTypesRouter = require("./routes/productTypes.routes");
+const createProductStatusesRouter = require("./routes/productStatuses.routes");
+const createProductsRouter = require("./routes/products.routes");
 const createSpecialFieldDatatypesRouter = require("./routes/specialFieldDatatypes.routes");
 const createSpecialFieldsRouter = require("./routes/specialFields.routes");
 
@@ -50,6 +52,8 @@ db.connect((err) => {
 
 app.use("/api/brands", createBrandsRouter(db));
 app.use("/api/product-types", createProductTypesRouter(db));
+app.use("/api/product-statuses", createProductStatusesRouter(db));
+app.use("/api/products", createProductsRouter(db));
 app.use("/api/special-field-datatypes", createSpecialFieldDatatypesRouter(db));
 app.use("/api/special-fields", createSpecialFieldsRouter(db));
 
