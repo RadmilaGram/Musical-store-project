@@ -31,9 +31,12 @@ export async function fetchProductTypes() {
   return unwrap(response);
 }
 
-export async function fetchProductsCatalog() {
-  const { data } = await apiClient.get("/api/product-view");
-  return parseProducts(data);
+export async function fetchProductsCatalog(params = {}) {
+  const response = await apiClient.get("/api/products", { params });
+  const payload = response?.data;
+  if (Array.isArray(payload)) return payload;
+  if (payload?.success) return payload.data || [];
+  return payload || [];
 }
 
 const productsApi = {

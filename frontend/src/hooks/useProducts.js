@@ -1,6 +1,32 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { API_URL } from "../utils/apiService/ApiService";
+import productsApi from "../api/productsApi";
+
+const normalizeProduct = (product) => {
+  const specialRaw =
+    product.specialFieldsRaw ||
+    product.special_fields ||
+    product.specialFields ||
+    product.special_filds;
+
+  let specialParsed = {};
+  if (typeof specialRaw === "string" && specialRaw.trim()) {
+    try {
+      specialParsed = JSON.parse(specialRaw);
+    } catch (err) {
+      console.warn("Failed to parse special fields", product.id, err);
+      specialParsed = {};
+    }
+  } else if (specialRaw && typeof specialRaw === "object") {
+    specialParsed = specialRaw;
+  }
+
+  return {
+    ...product,
+    type_name: product.type_name || product.typeName || "",
+    brand_name: product.brand_name || product.brandName || "",
+    special_fields: specialParsed,
+  };
+};
 
 export const useProducts = () => {
   const [data, setData] = useState([]);
@@ -8,20 +34,11 @@ export const useProducts = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios
-      .get(`${API_URL}/api/product-view`)
-      .then((res) => {
-        // console.log("Ответ от сервера:", res.data);
-        const products = Array.isArray(res.data)
-          ? res.data
-          : res.data.products || [];
-        const parsed = products.map((p) => ({
-          ...p,
-          special_fields: p.special_fields ? JSON.parse(p.special_fields) : {},
-        }));
-
-        // console.log("Parsed:", res.data);
-        setData(parsed);
+    productsApi
+      .list()
+      .then((items) => {
+        const normalized = (items || []).map(normalizeProduct);
+        setData(normalized);
       })
       .catch((err) => {
         console.error("Ошибка при загрузке товаров:", err);

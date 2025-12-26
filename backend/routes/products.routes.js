@@ -139,12 +139,14 @@ const pickerSelectQuery = () => `
   SELECT
     p.id,
     p.name,
+    p.description,
     p.img,
     p.price,
     p.brand AS brandId,
     b.name AS brandName,
     p.type AS typeId,
-    pt.name AS typeName
+    pt.name AS typeName,
+    p.special_filds AS specialFieldsRaw
   FROM product p
   LEFT JOIN brand b ON b.id = p.brand
   LEFT JOIN product_type pt ON pt.id = p.type
@@ -183,64 +185,49 @@ function createProductsRouter(db) {
       typeId: typeParam,
       brandId: brandParam,
       limit: limitParam,
+      offset: offsetParam,
     } = req.query || {};
 
     const search =
       typeof searchRaw === "string" ? searchRaw.trim() : "";
     const typeId = typeParam ? parseNumericId(typeParam) : null;
     const brandId = brandParam ? parseNumericId(brandParam) : null;
-    const hasPickerQuery =
-      !!search || !!typeId || !!brandId || limitParam !== undefined;
-
-    if (hasPickerQuery) {
-      const limit = parseLimit(limitParam);
-      const conditions = [];
-      const params = [];
-      if (typeId) {
-        conditions.push("p.type = ?");
-        params.push(typeId);
-      }
-      if (brandId) {
-        conditions.push("p.brand = ?");
-        params.push(brandId);
-      }
-      if (search) {
-        const like = `%${search}%`;
-        conditions.push(
-          "(p.name LIKE ? OR b.name LIKE ? OR pt.name LIKE ?)"
-        );
-        params.push(like, like, like);
-      }
-      params.push(limit);
-
-      const whereClause = conditions.length
-        ? `WHERE ${conditions.join(" AND ")}`
-        : "";
-      const pickerQuery = `${pickerSelect} ${whereClause} ORDER BY p.name ASC LIMIT ?`;
-
-      db.query(pickerQuery, params, (err, rows) => {
-        if (err) {
-          console.error("Failed to search products:", err);
-          errorResponse(
-            res,
-            500,
-            "Failed to search products",
-            err.message
-          );
-          return;
-        }
-        success(res, rows);
-      });
-      return;
+    const conditions = [];
+    const params = [];
+    if (typeId) {
+      conditions.push("p.type = ?");
+      params.push(typeId);
+    }
+    if (brandId) {
+      conditions.push("p.brand = ?");
+      params.push(brandId);
+    }
+    if (search) {
+      const like = `%${search}%`;
+      conditions.push("(p.name LIKE ? OR b.name LIKE ? OR pt.name LIKE ?)");
+      params.push(like, like, like);
     }
 
-    db.query(`${baseSelect} ORDER BY p.id DESC`, (err, results) => {
+    const limit = parseLimit(limitParam);
+    const offset = Math.max(0, parseInt(offsetParam || 0, 10));
+
+    const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+    const pickerQuery = `${pickerSelect} ${whereClause} ORDER BY p.name ASC LIMIT ? OFFSET ?`;
+
+    db.query(pickerQuery, [...params, limit, offset], (err, rows) => {
       if (err) {
         console.error("Failed to fetch products:", err);
-        errorResponse(res, 500, "Failed to fetch products", err.message);
+        errorResponse(
+          res,
+          500,
+          "Failed to fetch products",
+          err.message
+        );
         return;
       }
-      success(res, results);
+      success(res, rows);
     });
     return;
   });
