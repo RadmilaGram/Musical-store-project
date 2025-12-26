@@ -18,6 +18,7 @@ import SpecialFieldsSection from "./admin/sections/SpecialFieldsSection/SpecialF
 import ProductTypeSpecialFieldsSection from "./admin/sections/ProductTypeSpecialFieldsSection/ProductTypeSpecialFieldsSection";
 import ProductsSection from "./admin/sections/ProductsSection/ProductsSection";
 import TradeInConditionsSection from "./admin/sections/TradeInConditionsSection/TradeInConditionsSection";
+import TradeInCatalogSection from "./admin/sections/TradeInCatalogSection/TradeInCatalogSection";
 
 function Admin() {
   return (
@@ -28,6 +29,7 @@ function Admin() {
       <SpecialFieldsSection />
       <ProductTypeSpecialFieldsSection />
       <ProductsSection />
+      <TradeInCatalogSection />
       <TradeInConditionsSection />
       <Box sx={{ width: "55%", minWidth: 500, mx: "auto" }}>
         <Typography variant="h2" component="h2">

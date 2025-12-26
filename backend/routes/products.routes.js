@@ -135,9 +135,36 @@ const makeSelectBaseQuery = () => `
   LEFT JOIN product_type pt ON pt.id = p.type
 `;
 
+const pickerSelectQuery = () => `
+  SELECT
+    p.id,
+    p.name,
+    p.img,
+    p.price,
+    p.brand AS brandId,
+    b.name AS brandName,
+    p.type AS typeId,
+    pt.name AS typeName
+  FROM product p
+  LEFT JOIN brand b ON b.id = p.brand
+  LEFT JOIN product_type pt ON pt.id = p.type
+`;
+
 function createProductsRouter(db) {
   const router = express.Router();
   const baseSelect = makeSelectBaseQuery();
+  const pickerSelect = pickerSelectQuery();
+
+  const parseLimit = (value) => {
+    if (value === undefined || value === null || value === "") {
+      return 50;
+    }
+    const num = Number(value);
+    if (!Number.isFinite(num)) {
+      return 50;
+    }
+    return Math.min(Math.max(Math.floor(num), 1), 200);
+  };
 
   const fetchProductById = (id) =>
     new Promise((resolve, reject) => {
@@ -151,13 +178,71 @@ function createProductsRouter(db) {
     });
 
   router.get("/", (req, res) => {
+    const {
+      search: searchRaw,
+      typeId: typeParam,
+      brandId: brandParam,
+      limit: limitParam,
+    } = req.query || {};
+
+    const search =
+      typeof searchRaw === "string" ? searchRaw.trim() : "";
+    const typeId = typeParam ? parseNumericId(typeParam) : null;
+    const brandId = brandParam ? parseNumericId(brandParam) : null;
+    const hasPickerQuery =
+      !!search || !!typeId || !!brandId || limitParam !== undefined;
+
+    if (hasPickerQuery) {
+      const limit = parseLimit(limitParam);
+      const conditions = [];
+      const params = [];
+      if (typeId) {
+        conditions.push("p.type = ?");
+        params.push(typeId);
+      }
+      if (brandId) {
+        conditions.push("p.brand = ?");
+        params.push(brandId);
+      }
+      if (search) {
+        const like = `%${search}%`;
+        conditions.push(
+          "(p.name LIKE ? OR b.name LIKE ? OR pt.name LIKE ?)"
+        );
+        params.push(like, like, like);
+      }
+      params.push(limit);
+
+      const whereClause = conditions.length
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+      const pickerQuery = `${pickerSelect} ${whereClause} ORDER BY p.name ASC LIMIT ?`;
+
+      db.query(pickerQuery, params, (err, rows) => {
+        if (err) {
+          console.error("Failed to search products:", err);
+          errorResponse(
+            res,
+            500,
+            "Failed to search products",
+            err.message
+          );
+          return;
+        }
+        success(res, rows);
+      });
+      return;
+    }
+
     db.query(`${baseSelect} ORDER BY p.id DESC`, (err, results) => {
       if (err) {
         console.error("Failed to fetch products:", err);
-        return errorResponse(res, 500, "Failed to fetch products", err.message);
+        errorResponse(res, 500, "Failed to fetch products", err.message);
+        return;
       }
-      return success(res, results);
+      success(res, results);
     });
+    return;
   });
 
   router.get("/:id", async (req, res) => {

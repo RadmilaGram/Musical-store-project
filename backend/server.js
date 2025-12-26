@@ -11,6 +11,7 @@ const createProductsRouter = require("./routes/products.routes");
 const createSpecialFieldDatatypesRouter = require("./routes/specialFieldDatatypes.routes");
 const createSpecialFieldsRouter = require("./routes/specialFields.routes");
 const createTradeInConditionsRouter = require("./routes/tradeInConditions.routes");
+const createTradeInCatalogRouter = require("./routes/tradeInCatalog.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -59,6 +60,7 @@ app.use("/api/products", createProductsRouter(db));
 app.use("/api/special-field-datatypes", createSpecialFieldDatatypesRouter(db));
 app.use("/api/special-fields", createSpecialFieldsRouter(db));
 app.use("/api/trade-in-conditions", createTradeInConditionsRouter(db));
+app.use("/api/trade-in-catalog", createTradeInCatalogRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,

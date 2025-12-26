@@ -121,6 +121,7 @@ export default function TradeInConditionsSection() {
             onEdit={() => handleEditRequest(params.row)}
             onDelete={() => handleDeleteRequest(params.row)}
             disableEdit
+            hideEdit
           />
         ),
       },

@@ -41,6 +41,17 @@ const productsApi = {
     const response = await apiClient.get("/api/products");
     return unwrap(response);
   },
+  async search(params = {}) {
+    const response = await apiClient.get("/api/products", {
+      params: {
+        search: params.search,
+        typeId: params.typeId,
+        brandId: params.brandId,
+        limit: params.limit,
+      },
+    });
+    return unwrap(response);
+  },
   async getOne(id) {
     const response = await apiClient.get(`/api/products/${id}`);
     return unwrap(response);

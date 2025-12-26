@@ -8,16 +8,19 @@ export default function RowActions({
   onDelete,
   disableEdit = false,
   disableDelete = false,
+  hideEdit = false,
 }) {
   return (
     <Stack direction="row" spacing={1}>
-      <Tooltip title="Edit">
-        <span>
-          <IconButton onClick={onEdit} disabled={disableEdit} size="small">
-            <EditIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
+      {!hideEdit && (
+        <Tooltip title="Edit">
+          <span>
+            <IconButton onClick={onEdit} disabled={disableEdit} size="small">
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
       <Tooltip title="Delete">
         <span>
           <IconButton
