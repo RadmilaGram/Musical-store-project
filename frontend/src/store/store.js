@@ -10,6 +10,7 @@ import adminSpecialFieldDatatypesReducer from "../features/admin/specialFieldDat
 import adminSpecialFieldsReducer from "../features/admin/specialFields/specialFieldsSlice";
 import adminProductsReducer from "../features/admin/products/productsSlice";
 import adminProductStatusesReducer from "../features/admin/productStatuses/productStatusesSlice";
+import adminTradeInConditionsReducer from "../features/admin/tradeInConditions/tradeInConditionsSlice";
 import { loadState, saveState } from "./persist";
 
 const preloadedState = loadState();
@@ -26,6 +27,7 @@ const store = configureStore({
     adminSpecialFields: adminSpecialFieldsReducer,
     adminProducts: adminProductsReducer,
     adminProductStatuses: adminProductStatusesReducer,
+    adminTradeInConditions: adminTradeInConditionsReducer,
   },
   preloadedState, // если undefined — RTK подхватит initialState из каждого слайса
 });
