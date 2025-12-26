@@ -22,13 +22,13 @@ const parseProducts = (data) => {
 };
 
 export async function fetchBrands() {
-  const { data } = await apiClient.get("/api/brand");
-  return data;
+  const response = await apiClient.get("/api/brands");
+  return unwrap(response);
 }
 
 export async function fetchProductTypes() {
-  const { data } = await apiClient.get("/api/prodType");
-  return data;
+  const response = await apiClient.get("/api/product-types");
+  return unwrap(response);
 }
 
 export async function fetchProductsCatalog() {

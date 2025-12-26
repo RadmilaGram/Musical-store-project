@@ -8,8 +8,8 @@ export const API_URL = API_BASE_URL;
 // read all Brands
 export const getBrand = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/brand`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/brands`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении бренда:", error);
     throw error;
@@ -19,19 +19,19 @@ export const getBrand = async () => {
 // read all product type
 export const getProdType = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/prodType`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/product-types`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении типа продукта:", error);
     throw error;
   }
 };
 
-// read all product type
+// read all product statuses
 export const getProdSatus = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/prodStatus`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/product-statuses`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении статуса продукта:", error);
     throw error;

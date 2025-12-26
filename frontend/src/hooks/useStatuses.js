@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { getProdSatus } from "../utils/apiService/ApiService";
+import productStatusesApi from "../api/productStatusesApi";
 
 export const useStatuses = () => {
   const [statuses, setStatuses] = useState([]);
 
   useEffect(() => {
-    getProdSatus().then(setStatuses).catch(console.error);
+    productStatusesApi
+      .list()
+      .then(setStatuses)
+      .catch((error) => console.error("Failed to load product statuses", error));
   }, []);
 
   return statuses;

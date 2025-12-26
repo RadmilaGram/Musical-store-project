@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { getProdType } from "../utils/apiService/ApiService";
+import productTypesApi from "../api/productTypesApi";
 
 export const useProductTypes = () => {
   const [types, setTypes] = useState([]);
 
   const fetchProdType = () => {
-    getProdType().then(setTypes).catch(console.error);
+    productTypesApi
+      .list()
+      .then(setTypes)
+      .catch((error) => console.error("Failed to load product types", error));
   };
 
   useEffect(() => {

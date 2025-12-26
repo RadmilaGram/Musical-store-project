@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { getBrand } from "../utils/apiService/ApiService";
+import brandsApi from "../api/brandsApi";
 
 export const useBrands = () => {
   const [brands, setBrands] = useState([]);
 
   const fetchBrands = () => {
-    getBrand().then(setBrands).catch(console.error);
+    brandsApi
+      .list()
+      .then(setBrands)
+      .catch((error) => console.error("Failed to load brands", error));
   };
 
   useEffect(() => {
