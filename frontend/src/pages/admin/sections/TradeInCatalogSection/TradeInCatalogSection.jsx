@@ -11,7 +11,7 @@ import RowActions from "../../../../admin/crud/RowActions";
 import ConfirmDialog from "../../../../admin/crud/ConfirmDialog";
 import { useTradeInCatalogCrud } from "../../../../features/admin/tradeInCatalog/useTradeInCatalogCrud";
 import { useProductsCrud } from "../../../../features/admin/products/useProductsCrud";
-import TradeInCatalogCreateDrawer from "./TradeInCatalogCreateDrawer";
+import TradeInCatalogCreateDrawer from "./create/TradeInCatalogCreateDrawer";
 
 const getErrorMessage = (error, fallback = "Request failed") =>
   error?.response?.data?.message || error?.message || fallback;
@@ -43,13 +43,11 @@ export default function TradeInCatalogSection() {
     error,
     ensureLoaded,
     reload,
-    createEntry,
     updateEntry,
     deleteEntry,
   } = useTradeInCatalogCrud();
   const {
     items: productItems,
-    status: productsStatus,
     ensureLoaded: ensureProductsLoaded,
   } = useProductsCrud();
 
@@ -278,10 +276,8 @@ export default function TradeInCatalogSection() {
       <TradeInCatalogCreateDrawer
         open={createOpen}
         onClose={closeCreateDialog}
-        onCreate={createEntry}
         products={productItems}
         existingProductIds={existingProductIds}
-        productsLoading={productsStatus === "loading"}
       />
 
       <ConfirmDialog
