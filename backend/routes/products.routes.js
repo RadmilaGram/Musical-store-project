@@ -144,11 +144,14 @@ const pickerSelectQuery = () => `
     p.price,
     p.brand AS brandId,
     b.name AS brandName,
+    p.status AS statusId,
+    ps.name AS statusName,
     p.type AS typeId,
     pt.name AS typeName,
     p.special_filds AS specialFieldsRaw
   FROM product p
   LEFT JOIN brand b ON b.id = p.brand
+  LEFT JOIN product_status ps ON ps.id = p.status
   LEFT JOIN product_type pt ON pt.id = p.type
 `;
 
