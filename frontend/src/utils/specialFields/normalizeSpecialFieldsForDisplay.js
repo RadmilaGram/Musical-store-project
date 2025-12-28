@@ -17,7 +17,9 @@ const parseSpecialFields = (specialFieldsRaw) => {
       const parsed = JSON.parse(trimmed);
       return isPlainObject(parsed) ? parsed : null;
     } catch (error) {
-      console.warn("Failed to parse special fields string", error);
+      if (import.meta.env.DEV) {
+        console.warn("Failed to parse special fields string", error);
+      }
       return null;
     }
   }

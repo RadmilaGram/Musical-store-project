@@ -5,7 +5,13 @@ export const useSpecialFieldDT = () => {
   const [specialFieldDT, setSpecialFieldDT] = useState([]);
 
   const fetchSpecialFieldDT = () => {
-    getSpecialFieldDT().then(setSpecialFieldDT).catch(console.error);
+    getSpecialFieldDT()
+      .then(setSpecialFieldDT)
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error(error);
+        }
+      });
   };
 
   useEffect(() => {

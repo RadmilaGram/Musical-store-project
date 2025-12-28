@@ -37,11 +37,12 @@ export default function Cart() {
     try {
       const orderPayload = { items: cartItems };
       const res = await placeOrder(orderPayload);
-      console.log("Order response (stub):", res);
       clear();
       alert("Order placed (stub)!");
     } catch (err) {
-      console.error("Order placement failed (stub):", err);
+      if (import.meta.env.DEV) {
+        console.error("Order placement failed (stub):", err);
+      }
       alert("Failed to place order.");
     } finally {
       setLoading(false);

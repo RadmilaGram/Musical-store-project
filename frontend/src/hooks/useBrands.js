@@ -8,7 +8,11 @@ export const useBrands = () => {
     brandsApi
       .list()
       .then(setBrands)
-      .catch((error) => console.error("Failed to load brands", error));
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error("Failed to load brands", error);
+        }
+      });
   };
 
   useEffect(() => {

@@ -13,7 +13,9 @@ const normalizeProduct = (product) => {
     try {
       specialParsed = JSON.parse(specialRaw);
     } catch (err) {
-      console.warn("Failed to parse special fields", product.id, err);
+      if (import.meta.env.DEV) {
+        console.warn("Failed to parse special fields", product.id, err);
+      }
       specialParsed = {};
     }
   } else if (specialRaw && typeof specialRaw === "object") {
@@ -41,7 +43,9 @@ export const useProducts = () => {
         setData(normalized);
       })
       .catch((err) => {
-        console.error("Ошибка при загрузке товаров:", err);
+        if (import.meta.env.DEV) {
+          console.error("Ошибка при загрузке товаров:", err);
+        }
         setError(err);
       })
       .finally(() => setLoading(false));

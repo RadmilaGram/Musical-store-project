@@ -28,7 +28,6 @@ function AddSpecialFieldForm() {
     resolver: yupResolver(addSpecialField_schema),
   });
   const submitFn = handleSubmit(async (data) => {
-    console.log(data);
     await addSpecialField(data);
     await fetchSpecialField();
     reset();

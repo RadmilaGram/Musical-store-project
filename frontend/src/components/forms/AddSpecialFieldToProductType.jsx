@@ -32,7 +32,6 @@ function AddSpecialFieldToProductType() {
     resolver: yupResolver(addSpecialFieldToProductType_schema),
   });
   const submitFn = handleSubmit(async (data) => {
-    console.log(data);
     await addSpecialFieldToProductType(data);
     await fetchProductTypeSpecialFields(data.productTypeSF);
     // reset();

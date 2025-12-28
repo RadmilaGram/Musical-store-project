@@ -8,7 +8,11 @@ export const useStatuses = () => {
     productStatusesApi
       .list()
       .then(setStatuses)
-      .catch((error) => console.error("Failed to load product statuses", error));
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error("Failed to load product statuses", error);
+        }
+      });
   }, []);
 
   return statuses;

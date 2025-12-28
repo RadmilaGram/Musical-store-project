@@ -32,7 +32,6 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = React.useState("");
 
   const onSubmit = async (data) => {
-    console.log("data", data);
     await login(data);
     // if (!isLoggedIn){setErrorMsg("Log in faild!")}
   };
