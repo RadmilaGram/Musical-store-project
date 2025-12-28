@@ -173,8 +173,8 @@ export default function ProductEditorForm({
             alt="Preview"
             sx={{
               width: "100%",
-              height: 200,
-              objectFit: "cover",
+              maxHeight: 280,
+              objectFit: "contain",
               borderRadius: 1,
               border: "1px solid",
               borderColor: "divider",
@@ -189,12 +189,6 @@ export default function ProductEditorForm({
           assignedFields={assignedFields}
           valuesByFieldId={specialFieldValues}
         />
-      </Stack>
-      <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save"}
-        </Button>
       </Stack>
     </Box>
   );
