@@ -15,10 +15,12 @@ import {
 import ProductCard from '../components/ProductCard';
 import { useProducts } from '../hooks/useProducts';
 import { categoryGroups } from '../constants/categoryGroups';
+import { useSpecialFieldsCatalog } from '../hooks/useSpecialFieldsCatalog';
 
 export default function CategoryPage() {
   const { groupId } = useParams();
   const { data: products, loading, error } = useProducts();
+  const { items: specialFieldsCatalog } = useSpecialFieldsCatalog();
 
   const group = categoryGroups.find((g) => g.id === groupId) || { types: [] };
   const availableTypes = group.types;
@@ -78,7 +80,11 @@ export default function CategoryPage() {
       {/* Product cards */}
       <Stack spacing={3} alignItems="center">
         {filtered.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard
+            key={product.id}
+            product={product}
+            specialFieldsCatalog={specialFieldsCatalog}
+          />
         ))}
         {filtered.length === 0 && (
           <Typography variant="h6" color="text.secondary">

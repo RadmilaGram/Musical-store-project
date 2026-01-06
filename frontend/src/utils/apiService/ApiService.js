@@ -8,8 +8,8 @@ export const API_URL = API_BASE_URL;
 // read all Brands
 export const getBrand = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/brand`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/brands`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении бренда:", error);
     throw error;
@@ -19,19 +19,19 @@ export const getBrand = async () => {
 // read all product type
 export const getProdType = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/prodType`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/product-types`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении типа продукта:", error);
     throw error;
   }
 };
 
-// read all product type
+// read all product statuses
 export const getProdSatus = async () => {
   try {
-    const response = await axios.get(`${API_URL}/api/prodStatus`);
-    return response.data;
+    const response = await axios.get(`${API_URL}/api/product-statuses`);
+    return response.data?.data || response.data;
   } catch (error) {
     console.error("Ошибка при получении статуса продукта:", error);
     throw error;
@@ -102,96 +102,6 @@ export const getTypeSpecialFields = async (typeID) => {
 // Adding part ---------------------------------------------------------------------------------------
 
 // add Brand
-export const addBrand = async (formData) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/addBrand`, formData);
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении бренда:", error);
-    throw error;
-  }
-};
-
-// add product type
-export const addProdType = async (formData) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/addProdType`, formData);
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении типа продукта:", error);
-    throw error;
-  }
-};
-
-// add product
-export const addProduct = async (formData) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/addProduct`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении типа продукта:", error);
-    throw error;
-  }
-};
-
-export const addSpecialField = async (formData) => {
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/addSpecialField`,
-      formData
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении специального поля:", error);
-    throw error;
-  }
-};
-
-export const addSpecialFieldValue = async (formData) => {
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/addSpecialFieldValue`,
-      formData
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении специального поля:", error);
-    throw error;
-  }
-};
-
-export const addSpecialFieldToProductType = async (formData) => {
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/addSpecialFieldToProductType`,
-      formData
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении специального поля:", error);
-    throw error;
-  }
-};
-
-export const addTradeInProduct = async ({
-  product_id,
-  reference_price,
-  base_discount_amount,
-}) => {
-  try {
-    const response = await axios.post(`${API_URL}/api/tradein`, {
-      product_id,
-      reference_price,
-      base_discount_amount,
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при добавлении специального поля:", error);
-    throw error;
-  }
-};
 
 export async function placeOrder(payload) {
   // Temporary stub: replace endpoint when backend is implemented

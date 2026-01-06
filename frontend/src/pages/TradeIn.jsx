@@ -1,76 +1,95 @@
 // src/pages/TradeIn.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { Box, Stack, Typography, Button, IconButton } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SelectField from "../components/formFields/SelectField";
 import { useProductTypes } from "../hooks/useProductTypes";
 import { useBrands } from "../hooks/useBrands";
-import { useProducts } from "../hooks/useProducts";
 import { useTradeInConfigs } from "../hooks/useTradeInConfigs";
 import { useTradeIn } from "../hooks/useTradeIn";
-
-// Condition options mapping with discount factors
-const stateOptions = [
-  { id: 1, name: "Ideal", factor: 1.00 },
-  { id: 2, name: "Almost New", factor: 0.85 },
-  { id: 3, name: "Good", factor: 0.70 },
-  { id: 4, name: "Fair", factor: 0.55 },
-  { id: 5, name: "Worn", factor: 0.40 },
-  { id: 6, name: "Broken", factor: 0.25 },
-];
 
 export default function TradeIn() {
   const { types } = useProductTypes();
   const { brands } = useBrands();
-  const { data: products = [], loading, error } = useProducts();
-  const { tradeInConfigs } = useTradeInConfigs();
+  const {
+    tradeInCatalog = [],
+    conditions = [],
+    loading,
+    error,
+    computeOffer,
+  } = useTradeInConfigs();
   const { items: selectedList, add, remove, total } = useTradeIn();
 
   const { control, handleSubmit, watch, reset } = useForm({
-    defaultValues: { typeId: "", brandId: "", productId: "", stateId: "" },
+    defaultValues: {
+      typeId: "",
+      brandId: "",
+      productId: "",
+      conditionCode: "",
+    },
   });
 
   const typeId = watch("typeId");
   const brandId = watch("brandId");
   const productId = watch("productId");
-  const stateId = watch("stateId");
+  const conditionCode = watch("conditionCode");
 
-  // Build available products list from configs
-  const available = tradeInConfigs
-    .map((cfg) => {
-      const prod = products.find((p) => p.id === cfg.id);
-      return prod ? { ...prod, baseDiscount: cfg.discount } : null;
-    })
-    .filter(Boolean);
+  const catalogItems = useMemo(
+    () =>
+      tradeInCatalog.map((entry) => ({
+        id: entry.productId,
+        name: entry.productName || entry.name,
+        brand_name: entry.brandName || entry.brand_name || "",
+        type_name: entry.typeName || entry.type_name || "",
+        referencePrice: Number(entry.referencePrice ?? 0),
+        payoutCap: Number(entry.baseDiscountAmount ?? entry.base_discount_amount ?? 0),
+      })),
+    [tradeInCatalog]
+  );
 
   // Derive available types
-  const availableTypes = types.filter((t) => available.some((p) => p.type_name === t.name));
+  const availableTypes = types.filter((t) =>
+    catalogItems.some((p) => p.type_name === t.name)
+  );
+
+  const selectedType = types.find((t) => String(t.id) === String(typeId));
+  const selectedBrand = brands.find((b) => String(b.id) === String(brandId));
 
   // Filter brands by selected type
   const filteredBrands = typeId
     ? brands.filter((b) =>
-        available.some(
-          (p) => p.type_name === types.find((t) => t.id === Number(typeId))?.name && p.brand_name === b.name
+        catalogItems.some(
+          (p) => p.type_name === selectedType?.name && p.brand_name === b.name
         )
       )
     : [];
 
   // Filter products by selected type & brand
   const filteredProducts = brandId
-    ? available.filter(
+    ? catalogItems.filter(
         (p) =>
-          p.type_name === types.find((t) => t.id === Number(typeId))?.name &&
-          p.brand_name === brands.find((b) => b.id === Number(brandId))?.name
+          p.type_name === selectedType?.name &&
+          p.brand_name === selectedBrand?.name
       )
     : [];
 
-  const onAdd = ({ productId, stateId }) => {
-    const prod = filteredProducts.find((p) => p.id === productId);
-    const stateOpt = stateOptions.find((s) => s.id === stateId);
-    if (!prod || !stateOpt) return;
-    const expected = Math.round(prod.baseDiscount * stateOpt.factor);
-    add({ ...prod, stateId, expectedDiscount: expected });
+  const conditionOptions = conditions.map((condition) => ({
+    id: condition.code,
+    name: `${condition.code} (${Number(condition.percent ?? 0)}%)`,
+  }));
+
+  const onAdd = ({ productId, conditionCode }) => {
+    const prod = filteredProducts.find(
+      (p) => String(p.id) === String(productId)
+    );
+    if (!prod || !conditionCode) return;
+    const expected = computeOffer({ productId, conditionCode });
+    add({
+      ...prod,
+      conditionCode,
+      expectedDiscount: expected,
+    });
     reset();
   };
 
@@ -110,13 +129,17 @@ export default function TradeIn() {
 
           <SelectField
             control={control}
-            name="stateId"
+            name="conditionCode"
             label="Condition"
-            options={stateOptions.map((s) => ({ id: s.id, name: s.name }))}
-            disabled={!productId}
+            options={conditionOptions}
+            disabled={!productId || !conditionOptions.length}
           />
 
-          <Button variant="contained" type="submit" disabled={!productId || !stateId}>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={!productId || !conditionCode}
+          >
             Add
           </Button>
         </Stack>

@@ -5,7 +5,13 @@ export const useProductTypeSpecialFields = () => {
   const [productTypeSpecialFields, setSpecialField] = useState([]);
 
   const fetchProductTypeSpecialFields = (typeID) => {
-    getTypeSpecialFields(typeID).then(setSpecialField).catch(console.error);
+    getTypeSpecialFields(typeID)
+      .then(setSpecialField)
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error(error);
+        }
+      });
   };
 
   return { productTypeSpecialFields, fetchProductTypeSpecialFields };

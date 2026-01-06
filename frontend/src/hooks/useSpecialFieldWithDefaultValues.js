@@ -7,7 +7,11 @@ export const useSpecialFieldWithDefaultValues = () => {
   const fetchSpecialField = () => {
     getSpecialFieldWithDefaultValues()
       .then(setSpecialField)
-      .catch(console.error);
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error(error);
+        }
+      });
   };
 
   useEffect(() => {

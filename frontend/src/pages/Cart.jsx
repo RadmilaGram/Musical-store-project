@@ -6,10 +6,12 @@ import { placeOrder } from "../utils/apiService/ApiService";
 import { useTradeIn } from "../hooks/useTradeIn";
 import { useCart } from "../hooks/useCart";
 import ProtectedActionButton from "../components/ProtectedActionButton";
+import { useSpecialFieldsCatalog } from "../hooks/useSpecialFieldsCatalog";
 
 export default function Cart() {
   const { items: cartItems, clear, total: purchaseTotal } = useCart();
   const { items: tradeInItems } = useTradeIn();
+  const { items: specialFieldsCatalog } = useSpecialFieldsCatalog();
   const [loading, setLoading] = React.useState(false);
 
   // Sum of all trade-in item discounts (per unit * quantity)
@@ -35,11 +37,12 @@ export default function Cart() {
     try {
       const orderPayload = { items: cartItems };
       const res = await placeOrder(orderPayload);
-      console.log("Order response (stub):", res);
       clear();
       alert("Order placed (stub)!");
     } catch (err) {
-      console.error("Order placement failed (stub):", err);
+      if (import.meta.env.DEV) {
+        console.error("Order placement failed (stub):", err);
+      }
       alert("Failed to place order.");
     } finally {
       setLoading(false);
@@ -63,7 +66,11 @@ export default function Cart() {
                 key={item.id}
                 sx={{ position: "relative", display: "inline-block", mb: 4 }}
               >
-                <ProductCard showRemove={true} product={item} />
+                <ProductCard
+                  showRemove={true}
+                  product={item}
+                  specialFieldsCatalog={specialFieldsCatalog}
+                />
               </Box>
             );
           })}
