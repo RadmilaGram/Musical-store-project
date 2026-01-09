@@ -10,15 +10,15 @@ import { useSpecialFieldsCatalog } from "../hooks/useSpecialFieldsCatalog";
 
 export default function Cart() {
   const { items: cartItems, clear, total: purchaseTotal } = useCart();
-  const { items: tradeInItems } = useTradeIn();
+  const { items: tradeInItems, reset: resetTradeIn } = useTradeIn();
   const { items: specialFieldsCatalog } = useSpecialFieldsCatalog();
   const [loading, setLoading] = React.useState(false);
 
-  // Sum of all trade-in item discounts (per unit * quantity)
+  // Sum of all trade-in item discounts (per unit * trade-in quantity)
   const totalDiscount = tradeInItems.reduce((sum, item) => {
-    const cartItem = cartItems.find((ci) => ci.id === item.id);
-    const qty = cartItem?.quantity ?? 1;
-    return sum + item.expectedDiscount * qty;
+    const qty = Number(item.quantity ?? 1) || 1;
+    const unitDiscount = Number(item.expectedDiscount) || 0;
+    return sum + unitDiscount * qty;
   }, 0);
 
   // Cap discount at 50% of purchaseTotal
@@ -37,7 +37,15 @@ export default function Cart() {
     try {
       const orderPayload = { items: cartItems };
       const res = await placeOrder(orderPayload);
+      const payload = res?.data ?? res;
+      const success =
+        payload?.success === true ||
+        Boolean(payload?.id ?? payload?.orderId ?? payload?.data?.id);
+      if (!success) {
+        throw new Error("Order placement failed");
+      }
       clear();
+      resetTradeIn();
       alert("Order placed (stub)!");
     } catch (err) {
       if (import.meta.env.DEV) {

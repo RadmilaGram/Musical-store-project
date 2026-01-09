@@ -8,6 +8,7 @@ import {
   authFailure,
   logout as logoutAction,
 } from "../store/authSlice";
+import { resetTradeIn } from "../store/tradeInSlice";
 import { closeLogin } from "../store/uiSlice";
 
 /**
@@ -73,5 +74,6 @@ export function useLogout() {
       localStorage.removeItem("token");
     } catch {}
     dispatch(logoutAction());
+    dispatch(resetTradeIn());
   };
 }

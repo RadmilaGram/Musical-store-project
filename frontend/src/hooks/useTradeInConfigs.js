@@ -1,6 +1,7 @@
 // src/hooks/useTradeInConfigs.js
 import { useCallback, useEffect, useState } from "react";
 import tradeInStoreApi from "../api/tradeInStoreApi";
+import { computeTradeInOffer } from "../use-cases/trade-in/computeTradeInOffer";
 
 export function useTradeInConfigs() {
   const [catalog, setCatalog] = useState([]);
@@ -37,11 +38,8 @@ export function useTradeInConfigs() {
       const condition = conditions.find(
         (item) => item.code === conditionCode || String(item.code) === String(conditionCode)
       );
-      if (!entry || !condition) return 0;
-      const cap = Number(entry.baseDiscountAmount ?? entry.referencePrice ?? 0);
-      const percent = Number(condition.percent ?? 0);
-      if (!Number.isFinite(cap) || !Number.isFinite(percent)) return 0;
-      return Math.max(0, Math.round(cap * (percent / 100)));
+      const offer = computeTradeInOffer(entry, condition);
+      return offer?.discount ?? 0;
     },
     [catalog, conditions]
   );
