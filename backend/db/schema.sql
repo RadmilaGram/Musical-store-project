@@ -5,7 +5,7 @@ CREATE TABLE `brand` (
   `name` varchar(45) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=82 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -57,17 +57,21 @@ CREATE TABLE `order_status` (
 CREATE TABLE `order_status_history` (
   `id` int NOT NULL AUTO_INCREMENT,
   `order_id` int NOT NULL,
-  `old_status` varchar(32) DEFAULT NULL,
-  `new_status` varchar(32) NOT NULL,
+  `oldStatusId` int DEFAULT NULL,
+  `newStatusId` int NOT NULL,
   `changed_by` int DEFAULT NULL,
   `note` text,
   `changed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_hist_order` (`order_id`),
+  KEY `idx_hist_old_status_id` (`oldStatusId`),
+  KEY `idx_hist_new_status_id` (`newStatusId`),
   KEY `idx_hist_changed_at` (`changed_at`),
   KEY `fk_hist_changed_by` (`changed_by`),
   CONSTRAINT `fk_hist_changed_by` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_hist_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_hist_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_hist_old_status` FOREIGN KEY (`oldStatusId`) REFERENCES `order_status` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_hist_new_status` FOREIGN KEY (`newStatusId`) REFERENCES `order_status` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -96,7 +100,7 @@ CREATE TABLE `order_trade_in` (
 CREATE TABLE `orders` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `status` enum('new','preparing','delivering','finished','canceled') NOT NULL DEFAULT 'new',
+  `statusId` int NOT NULL,
   `comment_client` text,
   `comment_internal` text,
   `contact_name` varchar(255) DEFAULT NULL,
@@ -112,18 +116,11 @@ CREATE TABLE `orders` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_orders_user` (`user_id`),
-  KEY `idx_orders_status` (`status`),
+  KEY `idx_orders_status_id` (`statusId`),
   KEY `idx_orders_created` (`created_at`),
-  CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_orders_status` FOREIGN KEY (`statusId`) REFERENCES `order_status` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `producer` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(45) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -144,7 +141,7 @@ CREATE TABLE `product` (
   CONSTRAINT `brand` FOREIGN KEY (`brand`) REFERENCES `brand` (`id`),
   CONSTRAINT `status` FOREIGN KEY (`status`) REFERENCES `product_status` (`id`),
   CONSTRAINT `type` FOREIGN KEY (`type`) REFERENCES `product_type` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -153,7 +150,7 @@ CREATE TABLE `product_status` (
   `name` varchar(45) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -163,7 +160,7 @@ CREATE TABLE `product_type` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -176,28 +173,6 @@ CREATE TABLE `product_type_special_field` (
   CONSTRAINT `special_field_id` FOREIGN KEY (`spec_fild_id`) REFERENCES `special_field` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `product_type_special_fields` AS SELECT 
- 1 AS `type_name`,
- 1 AS `field_name`,
- 1 AS `type_id`,
- 1 AS `field_id`,
- 1 AS `field_dt`*/;
-SET character_set_client = @saved_cs_client;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `product_view` AS SELECT 
- 1 AS `id`,
- 1 AS `name`,
- 1 AS `description`,
- 1 AS `img`,
- 1 AS `price`,
- 1 AS `special_fields`,
- 1 AS `brand_name`,
- 1 AS `status_name`,
- 1 AS `type_name`*/;
-SET character_set_client = @saved_cs_client;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `special_field` (
@@ -248,23 +223,6 @@ CREATE TABLE `trade_in_conditions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tradein` (
-  `product_id` int NOT NULL,
-  `discont` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-/*!40101 SET character_set_client = @saved_cs_client */;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `tradein_product_view` AS SELECT 
- 1 AS `id`,
- 1 AS `name`,
- 1 AS `img`,
- 1 AS `brand_name`,
- 1 AS `type_name`,
- 1 AS `discount`*/;
-SET character_set_client = @saved_cs_client;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_role` (
   `id` int NOT NULL AUTO_INCREMENT,
   `role` varchar(45) DEFAULT NULL,
@@ -287,42 +245,3 @@ CREATE TABLE `users` (
   CONSTRAINT `user_fole_fk` FOREIGN KEY (`role`) REFERENCES `user_role` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
-/*!50001 DROP VIEW IF EXISTS `product_type_special_fields`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `product_type_special_fields` AS select `pt`.`name` AS `type_name`,`sf`.`name` AS `field_name`,`pt`.`id` AS `type_id`,`sf`.`id` AS `field_id`,`sf`.`datatype` AS `field_dt` from ((`product_type` `pt` join `product_type_special_field` `pt_sf` on((`pt`.`id` = `pt_sf`.`type_id`))) join `special_field` `sf` on((`sf`.`id` = `pt_sf`.`spec_fild_id`))) */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-/*!50001 DROP VIEW IF EXISTS `product_view`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `product_view` AS select `p`.`id` AS `id`,`p`.`name` AS `name`,`p`.`description` AS `description`,`p`.`img` AS `img`,`p`.`price` AS `price`,`p`.`special_filds` AS `special_fields`,`b`.`name` AS `brand_name`,`s`.`name` AS `status_name`,`t`.`name` AS `type_name` from (((`product` `p` left join `brand` `b` on((`p`.`brand` = `b`.`id`))) left join `product_status` `s` on((`p`.`status` = `s`.`id`))) left join `product_type` `t` on((`p`.`type` = `t`.`id`))) */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-/*!50001 DROP VIEW IF EXISTS `tradein_product_view`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `tradein_product_view` AS select `pv`.`id` AS `id`,`pv`.`name` AS `name`,`pv`.`img` AS `img`,`pv`.`brand_name` AS `brand_name`,`pv`.`type_name` AS `type_name`,`t`.`discont` AS `discount` from (`product_view` `pv` join `tradein` `t` on((`pv`.`id` = `t`.`product_id`))) */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;

@@ -12,6 +12,7 @@ const createSpecialFieldDatatypesRouter = require("./routes/specialFieldDatatype
 const createSpecialFieldsRouter = require("./routes/specialFields.routes");
 const createTradeInConditionsRouter = require("./routes/tradeInConditions.routes");
 const createTradeInCatalogRouter = require("./routes/tradeInCatalog.routes");
+const createOrdersRouter = require("./routes/orders.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -61,6 +62,7 @@ app.use("/api/special-field-datatypes", createSpecialFieldDatatypesRouter(db));
 app.use("/api/special-fields", createSpecialFieldsRouter(db));
 app.use("/api/trade-in-conditions", createTradeInConditionsRouter(db));
 app.use("/api/trade-in-catalog", createTradeInCatalogRouter(db));
+app.use("/api/orders", createOrdersRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,
@@ -189,7 +191,11 @@ app.get("/api/SpecialFieldValues", (req, res) => {
 app.get("/api/TypeSpecialFields", (req, res) => {
   const { typeID } = req.query;
   db.query(
-    "SELECT * FROM product_type_special_fields where type_id = '" +
+    "SELECT pt.name AS type_name, sf.name AS field_name, pt.id AS type_id, sf.id AS field_id, sf.datatype AS field_dt " +
+      "FROM product_type pt " +
+      "JOIN product_type_special_field pt_sf ON pt.id = pt_sf.type_id " +
+      "JOIN special_field sf ON sf.id = pt_sf.spec_fild_id " +
+      "WHERE pt.id = '" +
       typeID +
       "'",
     (err, results) => {
@@ -221,22 +227,6 @@ app.post("/api/upload", upload.single("img"), (req, res) => {
 
 
 
-app.post("/api/orders", (req, res) => {
-  const { items } = req.body;
-  console.log("New order received:", items);
-
-  // TODO: insert into orders and order_items tables
-  // e.g.:
-  // const orderQuery = "INSERT INTO orders (user_id, total) VALUES (?, ?)";
-  // db.query(orderQuery, [userId, total], (err, result) => { ... });
-
-  // Stub response
-  res.json({
-    success: true,
-    message: "Order received (stub).",
-    order: { items },
-  });
-});
 
 // Запуск сервера
 const port = 5000;
