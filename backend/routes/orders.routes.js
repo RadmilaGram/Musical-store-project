@@ -1,5 +1,14 @@
 const express = require("express");
 
+const allowedTransitions = {
+  new: ["preparing", "canceled"],
+  preparing: ["ready", "canceled"],
+  ready: ["delivering", "canceled"],
+  delivering: ["finished", "canceled"],
+  finished: [],
+  canceled: [],
+};
+
 function createOrdersRouter(db) {
   const router = express.Router();
 
@@ -234,6 +243,109 @@ function createOrdersRouter(db) {
       return res
         .status(500)
         .json({ success: false, message: "Failed to create order" });
+    }
+  });
+
+  router.patch("/:orderId/status", async (req, res) => {
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const rawStatus = req.body?.status;
+    const newStatusName = typeof rawStatus === "string" ? rawStatus.trim() : "";
+    if (!newStatusName) {
+      return res.status(400).json({ ok: false, message: "Invalid status" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        "SELECT o.id, o.statusId AS oldStatusId, os.name AS oldStatusName FROM orders o JOIN order_status os ON os.id = o.statusId WHERE o.id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const statusRows = await query(
+        "SELECT id, name FROM order_status WHERE name = ? LIMIT 1",
+        [newStatusName]
+      );
+      const statusRow = statusRows?.[0];
+      if (!statusRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Status not found" });
+      }
+
+      if (statusRow.id === orderRow.oldStatusId) {
+        await rollback();
+        return res
+          .status(400)
+          .json({ ok: false, message: "Status unchanged" });
+      }
+
+      const allowed = allowedTransitions[orderRow.oldStatusName] || [];
+      if (!allowed.includes(statusRow.name)) {
+        await rollback();
+        return res
+          .status(400)
+          .json({ ok: false, message: "Invalid status transition" });
+      }
+
+      await query("UPDATE orders SET statusId = ? WHERE id = ?", [
+        statusRow.id,
+        orderId,
+      ]);
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, NULL, NULL)",
+        [orderId, orderRow.oldStatusId, statusRow.id]
+      );
+
+      await commit();
+      return res.json({
+        ok: true,
+        orderId,
+        oldStatusId: orderRow.oldStatusId,
+        newStatusId: statusRow.id,
+      });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to update order status:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update status" });
     }
   });
 

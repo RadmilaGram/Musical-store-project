@@ -28,7 +28,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `order_status` WRITE;
 /*!40000 ALTER TABLE `order_status` DISABLE KEYS */;
-INSERT INTO `order_status` VALUES (1,'new'),(2,'preparing'),(3,'delivering'),(4,'finished'),(5,'canceled');
+INSERT INTO `order_status` VALUES (1,'new'),(2,'preparing'),(3,'delivering'),(4,'finished'),(5,'canceled'),(6,'ready');
 /*!40000 ALTER TABLE `order_status` ENABLE KEYS */;
 UNLOCK TABLES;
 
