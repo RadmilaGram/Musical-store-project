@@ -30,6 +30,10 @@ export default function Header() {
     { menuTitle: "Trade-in", pageURL: "/Trade-in" },
   ];
 
+  if (user) {
+    basePages.push({ menuTitle: "My orders", pageURL: "/my/orders" });
+  }
+
   // Admin видит Admin; Courier (2) — свою зону; Admin также видит Courier
   if (role === 1) {
     basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });

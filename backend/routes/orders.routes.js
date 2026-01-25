@@ -1,4 +1,5 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
 
 const allowedTransitions = {
   new: ["preparing", "canceled"],
@@ -11,6 +12,179 @@ const allowedTransitions = {
 
 function createOrdersRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
+
+  router.get("/my", requireAuth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, message: "Unauthorized" });
+    }
+
+    const query = `
+      SELECT
+        o.id,
+        o.created_at AS createdAt,
+        s.name AS status,
+        o.total_price_items AS itemsTotal,
+        o.total_discount AS totalDiscount,
+        o.total_final AS total
+      FROM orders o
+      JOIN order_status s ON s.id = o.statusId
+      WHERE o.user_id = ?
+      ORDER BY o.id DESC
+    `;
+
+    db.query(query, [userId], (err, rows) => {
+      if (err) {
+        console.error("Failed to fetch orders:", err);
+        return res.status(500).json({ ok: false, message: "Failed to fetch orders" });
+      }
+      const items = (rows || []).map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        status: row.status,
+        itemsTotal: Number(row.itemsTotal ?? 0),
+        totalDiscount: Number(row.totalDiscount ?? 0),
+        total: Number(row.total ?? 0),
+      }));
+      return res.json({ items });
+    });
+  });
+
+  router.get("/my/:id", requireAuth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, message: "Unauthorized" });
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const headerQuery = `
+      SELECT
+        o.id,
+        o.created_at AS createdAt,
+        s.name AS status,
+        o.total_price_items AS itemsTotal,
+        o.total_discount AS totalDiscount,
+        o.total_final AS total,
+        o.contact_name AS contactName,
+        o.delivery_address AS deliveryAddress,
+        o.delivery_phone AS deliveryPhone,
+        o.comment_client AS commentClient
+      FROM orders o
+      JOIN order_status s ON s.id = o.statusId
+      WHERE o.id = ? AND o.user_id = ?
+      LIMIT 1
+    `;
+
+    db.query(headerQuery, [orderId, userId], (headerErr, headerRows) => {
+      if (headerErr) {
+        console.error("Failed to fetch order header:", headerErr);
+        return res
+          .status(500)
+          .json({ ok: false, message: "Failed to fetch order" });
+      }
+
+      const header = headerRows?.[0];
+      if (!header) {
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const itemsQuery = `
+        SELECT
+          oi.product_id AS productId,
+          p.name AS title,
+          b.name AS brandName,
+          oi.price_each AS price,
+          oi.quantity AS quantity,
+          oi.subtotal AS total
+        FROM order_items oi
+        JOIN product p ON p.id = oi.product_id
+        LEFT JOIN brand b ON b.id = p.brand
+        WHERE oi.order_id = ?
+      `;
+
+      db.query(itemsQuery, [orderId], (itemsErr, itemRows) => {
+        if (itemsErr) {
+          console.error("Failed to fetch order items:", itemsErr);
+          return res
+            .status(500)
+            .json({ ok: false, message: "Failed to fetch order items" });
+        }
+
+        const items = (itemRows || []).map((row) => ({
+          productId: row.productId,
+          title: row.title,
+          brandName: row.brandName ?? null,
+          price: Number(row.price ?? 0),
+          quantity: Number(row.quantity ?? 0),
+          total: Number(row.total ?? 0),
+        }));
+
+        const tradeInQuery = `
+          SELECT
+            oti.product_id AS productId,
+            p.name AS title,
+            b.name AS brandName,
+            oti.base_amount AS baseAmount,
+            oti.percent AS percent,
+            oti.discount_amount AS discountAmount
+          FROM order_trade_in oti
+          JOIN product p ON p.id = oti.product_id
+          LEFT JOIN brand b ON b.id = p.brand
+          WHERE oti.order_id = ?
+        `;
+
+        db.query(tradeInQuery, [orderId], (tradeErr, tradeRows) => {
+          if (tradeErr) {
+            console.error("Failed to fetch trade-in items:", tradeErr);
+            return res
+              .status(500)
+              .json({ ok: false, message: "Failed to fetch trade-in items" });
+          }
+
+          const tradeInItems = (tradeRows || []).map((row) => {
+            const baseAmount = Number(row.baseAmount ?? 0);
+            const percent = Number(row.percent ?? 0);
+            const discountAmount = Number(row.discountAmount ?? 0);
+            const divisor = baseAmount * (percent / 100);
+            const quantity =
+              divisor > 0 ? Number((discountAmount / divisor).toFixed(2)) : null;
+
+            return {
+              productId: row.productId,
+              title: row.title,
+              brandName: row.brandName ?? null,
+              baseAmount,
+              percent,
+              quantity,
+              discountAmount,
+            };
+          });
+
+          return res.json({
+            order: {
+              id: header.id,
+              createdAt: header.createdAt,
+              status: header.status,
+              itemsTotal: Number(header.itemsTotal ?? 0),
+              totalDiscount: Number(header.totalDiscount ?? 0),
+              total: Number(header.total ?? 0),
+              contactName: header.contactName,
+              deliveryAddress: header.deliveryAddress,
+              deliveryPhone: header.deliveryPhone,
+              commentClient: header.commentClient,
+            },
+            items,
+            tradeInItems,
+          });
+        });
+      });
+    });
+  });
 
   router.post("/", async (req, res) => {
     const { userId, items, delivery, tradeInItems } = req.body || {};
@@ -246,7 +420,7 @@ function createOrdersRouter(db) {
     }
   });
 
-  router.patch("/:orderId/status", async (req, res) => {
+  router.patch("/:orderId/status", requireAuth, async (req, res) => {
     const orderId = Number(req.params.orderId);
     if (!Number.isInteger(orderId) || orderId <= 0) {
       return res.status(400).json({ ok: false, message: "Invalid orderId" });
@@ -290,7 +464,7 @@ function createOrdersRouter(db) {
       await begin();
 
       const orderRows = await query(
-        "SELECT o.id, o.statusId AS oldStatusId, os.name AS oldStatusName FROM orders o JOIN order_status os ON os.id = o.statusId WHERE o.id = ? FOR UPDATE",
+        "SELECT o.id, o.user_id AS userId, o.statusId AS oldStatusId, os.name AS oldStatusName FROM orders o JOIN order_status os ON os.id = o.statusId WHERE o.id = ? FOR UPDATE",
         [orderId]
       );
       const orderRow = orderRows?.[0];
@@ -314,6 +488,19 @@ function createOrdersRouter(db) {
         return res
           .status(400)
           .json({ ok: false, message: "Status unchanged" });
+      }
+
+      if (statusRow.name === "canceled") {
+        if (Number(orderRow.userId) !== Number(req.user?.id)) {
+          await rollback();
+          return res.status(404).json({ ok: false, message: "Order not found" });
+        }
+        if (!["new", "preparing", "ready"].includes(orderRow.oldStatusName)) {
+          await rollback();
+          return res
+            .status(400)
+            .json({ ok: false, message: "Invalid status transition" });
+        }
       }
 
       const allowed = allowedTransitions[orderRow.oldStatusName] || [];

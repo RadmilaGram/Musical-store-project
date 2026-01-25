@@ -4,6 +4,8 @@ const path = require("path");
 const mysql = require("mysql2");
 const cors = require("cors");
 const fs = require("fs");
+const cookieParser = require("cookie-parser");
+const session = require("express-session");
 const createBrandsRouter = require("./routes/brands.routes");
 const createProductTypesRouter = require("./routes/productTypes.routes");
 const createProductStatusesRouter = require("./routes/productStatuses.routes");
@@ -13,15 +15,26 @@ const createSpecialFieldsRouter = require("./routes/specialFields.routes");
 const createTradeInConditionsRouter = require("./routes/tradeInConditions.routes");
 const createTradeInCatalogRouter = require("./routes/tradeInCatalog.routes");
 const createOrdersRouter = require("./routes/orders.routes");
+const createAuthRouter = require("./routes/auth.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
 
 const app = express(); // Инициализация Express
-app.use(cors()); // Настроим CORS для разрешения запросов с фронтенда
+app.use(cors({ origin: true, credentials: true })); // Настроим CORS для разрешения запросов с фронтенда
 app.use(express.json()); // Парсим JSON-данные из запросов
 app.use(express.urlencoded({ extended: true })); // Поддержка form-data без файлов
 app.use("/uploads", express.static("uploads")); // доступ к изображениям
+app.use(cookieParser());
+app.use(
+  session({
+    name: "sid",
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: "lax", secure: false },
+  })
+);
 
 // Хранилище для изображений
 const storage = multer.diskStorage({
@@ -63,6 +76,7 @@ app.use("/api/special-fields", createSpecialFieldsRouter(db));
 app.use("/api/trade-in-conditions", createTradeInConditionsRouter(db));
 app.use("/api/trade-in-catalog", createTradeInCatalogRouter(db));
 app.use("/api/orders", createOrdersRouter(db));
+app.use("/api/auth", createAuthRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,
@@ -123,7 +137,10 @@ app.post("/api/login", async (req, res) => {
 
     // console.log(results[0])
 
-    res.json({ user: results[0], token: results[0].id }); // Отправляем данные на фронтенд
+    req.session.userId = results[0].id;
+    const { password: _password, password_hash: _passwordHash, ...safeUser } =
+      results[0];
+    res.json({ user: safeUser }); // Отправляем данные на фронтенд
   });
 });
 

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_BASE_URL } from "../../api/axiosInstance";
+import { API_BASE_URL, apiClient } from "../../api/axiosInstance";
 
 export const API_URL = API_BASE_URL;
 
@@ -109,9 +109,27 @@ export async function placeOrder(payload) {
 }
 
 export const loginByEmail = async ({ email, password }) => {
-  const { data } = await axios.post(`${API_URL}/api/login`, {
-    email,
-    password,
-  });
+  const { data } = await axios.post(
+    `${API_URL}/api/login`,
+    {
+      email,
+      password,
+    },
+    { withCredentials: true }
+  );
   return data; // { user, token }
+};
+
+export const logoutUser = async () => {
+  const { data } = await axios.post(
+    `${API_URL}/api/auth/logout`,
+    {},
+    { withCredentials: true }
+  );
+  return data;
+};
+
+export const getMe = async () => {
+  const { data } = await apiClient.get("/api/auth/me");
+  return data;
 };

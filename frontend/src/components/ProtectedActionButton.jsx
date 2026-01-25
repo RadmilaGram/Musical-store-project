@@ -9,11 +9,11 @@ export default function ProtectedActionButton({
   isLoading,
   ...props
 }) {
-  const token = useSelector((s) => s.auth.token);
+  const user = useSelector((s) => s.auth.user);
   const { open } = useLoginModal();
 
   const handleClick = () => {
-    if (!token) return open();
+    if (!user) return open();
     onAuthedClick?.();
   };
 

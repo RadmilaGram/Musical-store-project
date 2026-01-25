@@ -7,7 +7,8 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useAuth } from "./hooks/useAuth";
+import { useAuth, useAuthBootstrap } from "./hooks/useAuth";
+import OrdersPage from "./pages/client/OrdersPage";
 
 // UI
 import Header from "./components/header/Header";
@@ -94,6 +95,14 @@ function CourierStub() {
 
 function App() {
   const { isLoggedIn, user } = useAuth();
+  const bootstrapAuth = useAuthBootstrap();
+  const didBootstrap = React.useRef(false);
+
+  useEffect(() => {
+    if (didBootstrap.current) return;
+    didBootstrap.current = true;
+    bootstrapAuth();
+  }, [bootstrapAuth]);
 
   return (
     <>
@@ -108,6 +117,7 @@ function App() {
         <Route path="/category/:groupId" element={<CategoryPage />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/trade-in" element={<TradeIn />} />
+        <Route path="/my/orders" element={<OrdersPage />} />
 
         {/* админка — доступна только админам */}
         <Route

@@ -2,6 +2,7 @@
 import { useSelector, useDispatch } from "react-redux";
 import axios from "axios";
 import { API_URL } from "../utils/apiService/ApiService";
+import { getMe, logoutUser } from "../utils/apiService/ApiService";
 import {
   authStart,
   authSuccess,
@@ -26,7 +27,7 @@ export function useAuth() {
   const isLoggedIn =
     typeof isLoggedInFromState === "boolean"
       ? isLoggedInFromState
-      : Boolean(token);
+      : Boolean(user?.id ?? user);
 
   return { user, token, status, error, isLoggedIn };
 }
@@ -46,15 +47,11 @@ export function useLogin() {
         email,
         password,
       });
-      // ожидаем { user, token }
-      const { user, token } = data || {};
-      if (token) {
-        localStorage.setItem("token", token);
-      }
-
-      dispatch(authSuccess({ user, token }));
+      // ожидаем { user }
+      const { user } = data || {};
+      dispatch(authSuccess({ user }));
       dispatch(closeLogin()); // закрываем popup после успеха
-      return { user, token };
+      return { user };
     } catch (e) {
       const message =
         e?.response?.data?.message || e?.message || "Не удалось выполнить вход";
@@ -69,11 +66,28 @@ export function useLogin() {
  */
 export function useLogout() {
   const dispatch = useDispatch();
-  return function logout() {
+  return async function logout() {
     try {
-      localStorage.removeItem("token");
+      await logoutUser();
     } catch {}
     dispatch(logoutAction());
     dispatch(resetTradeIn());
+  };
+}
+
+export function useAuthBootstrap() {
+  const dispatch = useDispatch();
+
+  return async function bootstrapAuth() {
+    try {
+      const data = await getMe();
+      dispatch(authSuccess({ user: data?.user || null }));
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        dispatch(logoutAction());
+      } else if (import.meta.env.DEV) {
+        console.error("Auth bootstrap failed:", err);
+      }
+    }
   };
 }
