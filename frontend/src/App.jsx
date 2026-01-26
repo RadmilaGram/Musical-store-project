@@ -10,6 +10,7 @@ import {
 import { useAuth, useAuthBootstrap } from "./hooks/useAuth";
 import OrdersPage from "./pages/client/OrdersPage";
 import ManagerOrdersPage from "./pages/manager/ManagerOrdersPage";
+import CourierOrdersPage from "./pages/courier/CourierOrdersPage";
 
 // UI
 import Header from "./components/header/Header";
@@ -26,7 +27,6 @@ import { useLoginModal } from "./hooks/useLoginModal";
 
 // --- role helpers (подправь уровни ролей под свою модель) ---
 const isAdmin = (user) => Number(user?.role) === 1;
-const isCourier = (user) => Number(user?.role) === 2;
 
 // --- Guard: если гость — открыть попап и ничего не рендерить ---
 function RequireAuth({ children }) {
@@ -85,15 +85,6 @@ function LoginPopupRoute() {
   return null;
 }
 
-// --- ВРЕМЕННЫЙ STUB для курьера (замени позже своей страницей) ---
-function CourierStub() {
-  return (
-    <div style={{ padding: 16 }}>
-      Курьерская зона (stub): заказы, ожидающие доставку.
-    </div>
-  );
-}
-
 function App() {
   const { isLoggedIn, user } = useAuth();
   const bootstrapAuth = useAuthBootstrap();
@@ -140,10 +131,10 @@ function App() {
 
         {/* курьер — доступ курьеру и админу */}
         <Route
-          path="/courier"
+          path="/courier/orders"
           element={
-            <RequireRole roles={[2]}>
-              <CourierStub />
+            <RequireRole roles={[4]}>
+              <CourierOrdersPage />
             </RequireRole>
           }
         />

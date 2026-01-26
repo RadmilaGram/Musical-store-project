@@ -38,11 +38,11 @@ export default function Header() {
   if (role === 1) {
     basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });
     basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
-    basePages.push({ menuTitle: "Courier", pageURL: "/courier" }); // ← можно убрать, если пока не нужен
+    basePages.push({ menuTitle: "Courier", pageURL: "/courier/orders" });
   } else if (role === 3) {
     basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
   } else if (role === 4) {
-    basePages.push({ menuTitle: "Courier", pageURL: "/courier" });
+    basePages.push({ menuTitle: "Courier", pageURL: "/courier/orders" });
   }
 
   const handleLogin = () => open();
