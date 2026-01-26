@@ -26,3 +26,69 @@ export async function cancelMyOrder(orderId) {
   });
   return data;
 }
+
+export async function getManagerQueue() {
+  const { data } = await apiClient.get("/api/orders/manager/queue", {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function getManagerMy() {
+  const { data } = await apiClient.get("/api/orders/manager/my", {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function takeOrder(orderId) {
+  if (!orderId) {
+    return null;
+  }
+  const { data } = await apiClient.post(
+    `/api/orders/${orderId}/manager/take`
+  );
+  return data;
+}
+
+export async function markReady(orderId) {
+  if (!orderId) {
+    return null;
+  }
+  const { data } = await apiClient.post(
+    `/api/orders/${orderId}/manager/mark-ready`
+  );
+  return data;
+}
+
+export async function getManagerOrderDetails(orderId) {
+  if (!orderId) {
+    return null;
+  }
+  const { data } = await apiClient.get(`/api/orders/manager/${orderId}`, {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function getManagerOrderHistory(orderId) {
+  if (!orderId) {
+    return null;
+  }
+  const { data } = await apiClient.get(
+    `/api/orders/manager/${orderId}/history`,
+    { withCredentials: true }
+  );
+  return data;
+}
+
+export async function cancelManagerOrder(orderId, reason) {
+  if (!orderId) {
+    return null;
+  }
+  const { data } = await apiClient.post(
+    `/api/orders/${orderId}/manager/cancel`,
+    { reason }
+  );
+  return data;
+}

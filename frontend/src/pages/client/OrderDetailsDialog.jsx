@@ -27,15 +27,23 @@ export default function OrderDetailsDialog({
   details,
   onCancelOrder,
   orderId,
+  hideCancel = false,
+  extraActions = null,
 }) {
   const order = details?.order;
   const items = details?.items || [];
   const tradeInItems = details?.tradeInItems || [];
+  const client = details?.client || null;
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [cancelLoading, setCancelLoading] = React.useState(false);
   const [cancelError, setCancelError] = React.useState(null);
   const statusName = String(order?.status || "").toLowerCase();
   const canCancel = ["new", "preparing", "ready"].includes(statusName);
+  const displayValue = (value) => {
+    if (value === null || value === undefined) return "—";
+    if (typeof value === "string" && value.trim() === "") return "—";
+    return value;
+  };
 
   const handleCancel = async () => {
     if (!orderId || !onCancelOrder || cancelLoading) return;
@@ -82,6 +90,47 @@ export default function OrderDetailsDialog({
               <Typography>Total discount: {order.totalDiscount}</Typography>
               <Typography>Total: {order.total}</Typography>
             </Stack>
+
+            {client && (client.full_name || client.email) && (
+              <Stack spacing={1}>
+                <Typography variant="h6">Client</Typography>
+                {client.full_name && (
+                  <Typography>Name: {displayValue(client.full_name)}</Typography>
+                )}
+                {client.email && (
+                  <Typography>Email: {displayValue(client.email)}</Typography>
+                )}
+              </Stack>
+            )}
+
+            {(order.contact_name ||
+              order.delivery_phone ||
+              order.delivery_address) && (
+              <Stack spacing={1}>
+                <Typography variant="h6">Delivery</Typography>
+                <Typography>
+                  Contact: {displayValue(order.contact_name)}
+                </Typography>
+                <Typography>
+                  Phone: {displayValue(order.delivery_phone)}
+                </Typography>
+                <Typography>
+                  Address: {displayValue(order.delivery_address)}
+                </Typography>
+              </Stack>
+            )}
+
+            {(order.comment_client || order.comment_internal) && (
+              <Stack spacing={1}>
+                <Typography variant="h6">Comments</Typography>
+                <Typography>
+                  Client comment: {displayValue(order.comment_client)}
+                </Typography>
+                <Typography>
+                  Internal comment: {displayValue(order.comment_internal)}
+                </Typography>
+              </Stack>
+            )}
 
             <Stack spacing={1}>
               <Typography variant="h6">Items</Typography>
@@ -166,11 +215,12 @@ export default function OrderDetailsDialog({
         )}
       </DialogContent>
       <DialogActions>
-        {canCancel && orderId && (
+        {!hideCancel && canCancel && orderId && (
           <Button color="error" onClick={() => setConfirmOpen(true)}>
             Cancel order
           </Button>
         )}
+        {extraActions}
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
     </Dialog>

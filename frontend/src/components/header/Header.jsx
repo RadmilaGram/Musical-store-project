@@ -21,7 +21,7 @@ export default function Header() {
   const logout = useLogout();
   const { open } = useLoginModal();
 
-  const role = Number(user?.role); // 🔒 привели к числу 1/2/...
+  const role = Number(user?.role); // 🔒 привели к числу 1/2/3/4
 
   // базовое меню — как у тебя было
   const basePages = [
@@ -34,11 +34,14 @@ export default function Header() {
     basePages.push({ menuTitle: "My orders", pageURL: "/my/orders" });
   }
 
-  // Admin видит Admin; Courier (2) — свою зону; Admin также видит Courier
+  // Admin видит Admin/Manager/Courier; Manager (3) — свою зону; Courier (4) — свою
   if (role === 1) {
     basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });
+    basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
     basePages.push({ menuTitle: "Courier", pageURL: "/courier" }); // ← можно убрать, если пока не нужен
-  } else if (role === 2) {
+  } else if (role === 3) {
+    basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
+  } else if (role === 4) {
     basePages.push({ menuTitle: "Courier", pageURL: "/courier" });
   }
 

@@ -51,6 +51,709 @@ function createOrdersRouter(db) {
     });
   });
 
+  router.get("/manager/queue", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    try {
+      const statusRows = await query(
+        "SELECT id FROM order_status WHERE name = 'new' LIMIT 1"
+      );
+      const statusId = statusRows?.[0]?.id;
+      if (!statusId) {
+        return res
+          .status(500)
+          .json({ ok: false, message: "Missing order status" });
+      }
+
+      const ordersQuery = `
+        SELECT
+          o.id,
+          o.created_at AS createdAt,
+          s.name AS status,
+          o.total_price_items AS itemsTotal,
+          o.total_discount AS totalDiscount,
+          o.total_final AS total
+        FROM orders o
+        JOIN order_status s ON s.id = o.statusId
+        WHERE o.statusId = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+              AND oa.active = 1
+          )
+        ORDER BY o.created_at ASC
+      `;
+
+      const rows = await query(ordersQuery, [statusId]);
+      const items = (rows || []).map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        status: row.status,
+        itemsTotal: Number(row.itemsTotal ?? 0),
+        totalDiscount: Number(row.totalDiscount ?? 0),
+        total: Number(row.total ?? 0),
+      }));
+
+      return res.json({ items });
+    } catch (err) {
+      console.error("Failed to fetch manager queue:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch manager queue" });
+    }
+  });
+
+  router.get("/manager/my", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    const params = [];
+    const ownershipClause =
+      role === 3
+        ? "AND oa.user_id = ?"
+        : "";
+
+    if (role === 3) {
+      params.push(req.user?.id);
+    }
+
+    const ordersQuery = `
+      SELECT
+        o.id,
+        o.created_at AS createdAt,
+        s.name AS status,
+        o.total_price_items AS itemsTotal,
+        o.total_discount AS totalDiscount,
+        o.total_final AS total
+      FROM orders o
+      JOIN order_status s ON s.id = o.statusId
+      WHERE EXISTS (
+        SELECT 1
+        FROM order_assignments oa
+        WHERE oa.order_id = o.id
+          AND oa.user_role_id = 3
+          ${ownershipClause}
+      )
+      ORDER BY o.created_at DESC
+    `;
+
+    try {
+      const rows = await query(ordersQuery, params);
+      const items = (rows || []).map((row) => ({
+        id: row.id,
+        createdAt: row.createdAt,
+        status: row.status,
+        itemsTotal: Number(row.itemsTotal ?? 0),
+        totalDiscount: Number(row.totalDiscount ?? 0),
+        total: Number(row.total ?? 0),
+      }));
+      return res.json({ items });
+    } catch (err) {
+      console.error("Failed to fetch manager orders:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch manager orders" });
+    }
+  });
+
+  router.get("/manager/:orderId", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    try {
+      const headerRows = await query(
+        `
+        SELECT
+          o.id,
+          o.statusId,
+          o.created_at AS createdAt,
+          s.name AS status,
+          o.total_price_items AS itemsTotal,
+          o.total_discount AS totalDiscount,
+          o.total_final AS total,
+          o.contact_name AS contactName,
+          o.delivery_address AS deliveryAddress,
+          o.delivery_phone AS deliveryPhone,
+          o.comment_client AS commentClient,
+          o.comment_internal AS commentInternal,
+          u.id AS clientId,
+          u.full_name AS clientFullName,
+          u.email AS clientEmail
+        FROM orders o
+        JOIN order_status s ON s.id = o.statusId
+        JOIN users u ON u.id = o.user_id
+        WHERE o.id = ?
+        LIMIT 1
+        `,
+        [orderId]
+      );
+      const header = headerRows?.[0];
+      if (!header) {
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (role === 3) {
+        const assignmentRows = await query(
+          "SELECT 1 FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND user_id = ? LIMIT 1",
+          [orderId, req.user?.id]
+        );
+        if (assignmentRows.length === 0) {
+          const newStatusRows = await query(
+            "SELECT id FROM order_status WHERE name = 'new' LIMIT 1"
+          );
+          const newStatusId = newStatusRows?.[0]?.id;
+          if (!newStatusId || Number(header.statusId) !== Number(newStatusId)) {
+            return res.status(403).json({ ok: false, message: "Forbidden" });
+          }
+
+          const activeAssignmentRows = await query(
+            "SELECT 1 FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND active = 1 LIMIT 1",
+            [orderId]
+          );
+          if (activeAssignmentRows.length > 0) {
+            return res.status(403).json({ ok: false, message: "Forbidden" });
+          }
+        }
+      }
+
+      const itemsRows = await query(
+        `
+        SELECT
+          oi.product_id AS productId,
+          p.name AS title,
+          b.name AS brandName,
+          oi.price_each AS price,
+          oi.quantity AS quantity,
+          oi.subtotal AS total
+        FROM order_items oi
+        JOIN product p ON p.id = oi.product_id
+        LEFT JOIN brand b ON b.id = p.brand
+        WHERE oi.order_id = ?
+        `,
+        [orderId]
+      );
+
+      const tradeInRows = await query(
+        `
+        SELECT
+          oti.product_id AS productId,
+          p.name AS title,
+          b.name AS brandName,
+          oti.base_amount AS baseAmount,
+          oti.percent AS percent,
+          oti.discount_amount AS discountAmount
+        FROM order_trade_in oti
+        JOIN product p ON p.id = oti.product_id
+        LEFT JOIN brand b ON b.id = p.brand
+        WHERE oti.order_id = ?
+        `,
+        [orderId]
+      );
+
+      const items = (itemsRows || []).map((row) => ({
+        productId: row.productId,
+        title: row.title,
+        brandName: row.brandName ?? null,
+        price: Number(row.price ?? 0),
+        quantity: Number(row.quantity ?? 0),
+        total: Number(row.total ?? 0),
+      }));
+
+      const tradeInItems = (tradeInRows || []).map((row) => {
+        const baseAmount = Number(row.baseAmount ?? 0);
+        const percent = Number(row.percent ?? 0);
+        const discountAmount = Number(row.discountAmount ?? 0);
+        const divisor = baseAmount * (percent / 100);
+        const quantity =
+          divisor > 0 ? Number((discountAmount / divisor).toFixed(2)) : null;
+
+        return {
+          productId: row.productId,
+          title: row.title,
+          brandName: row.brandName ?? null,
+          baseAmount,
+          percent,
+          quantity,
+          discountAmount,
+        };
+      });
+
+      return res.json({
+        order: {
+          id: header.id,
+          createdAt: header.createdAt,
+          status: header.status,
+          itemsTotal: Number(header.itemsTotal ?? 0),
+          totalDiscount: Number(header.totalDiscount ?? 0),
+          total: Number(header.total ?? 0),
+          contactName: header.contactName,
+          deliveryAddress: header.deliveryAddress,
+          deliveryPhone: header.deliveryPhone,
+          commentClient: header.commentClient,
+          commentInternal: header.commentInternal,
+          contact_name: header.contactName,
+          delivery_address: header.deliveryAddress,
+          delivery_phone: header.deliveryPhone,
+          comment_client: header.commentClient,
+          comment_internal: header.commentInternal,
+        },
+        client: {
+          id: header.clientId,
+          full_name: header.clientFullName,
+          email: header.clientEmail,
+        },
+        items,
+        tradeInItems,
+      });
+    } catch (err) {
+      console.error("Failed to fetch manager order:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch manager order" });
+    }
+  });
+
+  router.get("/manager/:orderId/history", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    try {
+      if (role === 3) {
+        const assignmentRows = await query(
+          "SELECT 1 FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND user_id = ? LIMIT 1",
+          [orderId, req.user?.id]
+        );
+        if (assignmentRows.length === 0) {
+          return res.status(403).json({ ok: false, message: "Forbidden" });
+        }
+      }
+
+      const historyRows = await query(
+        `
+        SELECT
+          h.changed_at AS changedAt,
+          os_old.name AS oldStatus,
+          os_new.name AS newStatus,
+          u.full_name AS changedByName,
+          u.email AS changedByEmail,
+          h.note AS note
+        FROM order_status_history h
+        LEFT JOIN order_status os_old ON os_old.id = h.oldStatusId
+        LEFT JOIN order_status os_new ON os_new.id = h.newStatusId
+        LEFT JOIN users u ON u.id = h.changed_by
+        WHERE h.order_id = ?
+        ORDER BY h.changed_at ASC
+        `,
+        [orderId]
+      );
+
+      const history = (historyRows || []).map((row) => ({
+        changedAt: row.changedAt,
+        oldStatus: row.oldStatus ?? null,
+        newStatus: row.newStatus ?? null,
+        changedBy: row.changedByName || row.changedByEmail || null,
+        note: row.note ?? null,
+      }));
+
+      return res.json({ items: history });
+    } catch (err) {
+      console.error("Failed to fetch order history:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch order history" });
+    }
+  });
+
+  router.post("/:orderId/manager/cancel", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const reasonRaw = req.body?.reason;
+    const reason =
+      typeof reasonRaw === "string" ? reasonRaw.trim() : "";
+    if (!reason) {
+      return res.status(400).json({ ok: false, message: "Reason is required" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        `
+        SELECT o.id, o.statusId, s.name AS statusName
+        FROM orders o
+        JOIN order_status s ON s.id = o.statusId
+        WHERE o.id = ?
+        FOR UPDATE
+        `,
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (orderRow.statusName === "canceled") {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order already canceled" });
+      }
+
+      if (role === 3) {
+        const assignmentRows = await query(
+          "SELECT 1 FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND user_id = ? LIMIT 1",
+          [orderId, req.user?.id]
+        );
+        if (assignmentRows.length === 0) {
+          await rollback();
+          return res.status(403).json({ ok: false, message: "Forbidden" });
+        }
+
+        if (!["new", "preparing", "ready"].includes(orderRow.statusName)) {
+          await rollback();
+          return res
+            .status(409)
+            .json({ ok: false, message: "Order cannot be canceled" });
+        }
+      }
+
+      const canceledRows = await query(
+        "SELECT id FROM order_status WHERE name = 'canceled' LIMIT 1"
+      );
+      const canceledStatusId = canceledRows?.[0]?.id;
+      if (!canceledStatusId) {
+        await rollback();
+        return res
+          .status(500)
+          .json({ ok: false, message: "Missing order status" });
+      }
+
+      await query(
+        "UPDATE orders SET statusId = ?, canceled_reason = ? WHERE id = ?",
+        [canceledStatusId, reason, orderId]
+      );
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.statusId, canceledStatusId, req.user?.id, reason]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, status: "canceled" });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to cancel order:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to cancel order" });
+    }
+  });
+
+  router.post("/:orderId/manager/take", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const statusRows = await query(
+        "SELECT id, name FROM order_status WHERE name IN ('new', 'preparing')"
+      );
+      const statusByName = new Map(statusRows.map((row) => [row.name, row.id]));
+      const newStatusId = statusByName.get("new");
+      const preparingStatusId = statusByName.get("preparing");
+      if (!newStatusId || !preparingStatusId) {
+        await rollback();
+        return res
+          .status(500)
+          .json({ ok: false, message: "Missing order status" });
+      }
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (Number(orderRow.statusId) !== Number(newStatusId)) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order is not new" });
+      }
+
+      const assignmentRows = await query(
+        "SELECT 1 FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND active = 1 LIMIT 1",
+        [orderId]
+      );
+      if (assignmentRows.length > 0) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order already assigned" });
+      }
+
+      await query(
+        "INSERT INTO order_assignments (order_id, user_role_id, user_id, active, assigned_at) VALUES (?, 3, ?, 1, NOW())",
+        [orderId, req.user?.id]
+      );
+      await query("UPDATE orders SET statusId = ? WHERE id = ?", [
+        preparingStatusId,
+        orderId,
+      ]);
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, NULL)",
+        [orderId, newStatusId, preparingStatusId, req.user?.id]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, status: "preparing" });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to take order:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to take order" });
+    }
+  });
+
+  router.post("/:orderId/manager/mark-ready", requireAuth, async (req, res) => {
+    const role = Number(req.user?.role);
+    if (![1, 3].includes(role)) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const orderId = Number(req.params.orderId);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid orderId" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const statusRows = await query(
+        "SELECT id, name FROM order_status WHERE name IN ('preparing', 'ready')"
+      );
+      const statusByName = new Map(statusRows.map((row) => [row.name, row.id]));
+      const preparingStatusId = statusByName.get("preparing");
+      const readyStatusId = statusByName.get("ready");
+      if (!preparingStatusId || !readyStatusId) {
+        await rollback();
+        return res
+          .status(500)
+          .json({ ok: false, message: "Missing order status" });
+      }
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (Number(orderRow.statusId) !== Number(preparingStatusId)) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order is not preparing" });
+      }
+
+      const assignmentRows = await query(
+        "SELECT user_id AS userId FROM order_assignments WHERE order_id = ? AND user_role_id = 3 AND active = 1 LIMIT 1",
+        [orderId]
+      );
+      const assignment = assignmentRows?.[0];
+      if (!assignment) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order is not assigned" });
+      }
+
+      if (role === 3 && Number(assignment.userId) !== Number(req.user?.id)) {
+        await rollback();
+        return res.status(403).json({ ok: false, message: "Forbidden" });
+      }
+
+      await query("UPDATE orders SET statusId = ? WHERE id = ?", [
+        readyStatusId,
+        orderId,
+      ]);
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, NULL)",
+        [orderId, preparingStatusId, readyStatusId, req.user?.id]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, status: "ready" });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to mark order ready:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to mark order ready" });
+    }
+  });
+
   router.get("/my/:id", requireAuth, (req, res) => {
     const userId = req.user?.id;
     if (!userId) {

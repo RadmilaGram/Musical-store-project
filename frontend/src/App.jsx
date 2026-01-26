@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { useAuth, useAuthBootstrap } from "./hooks/useAuth";
 import OrdersPage from "./pages/client/OrdersPage";
+import ManagerOrdersPage from "./pages/manager/ManagerOrdersPage";
 
 // UI
 import Header from "./components/header/Header";
@@ -118,6 +119,14 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/trade-in" element={<TradeIn />} />
         <Route path="/my/orders" element={<OrdersPage />} />
+        <Route
+          path="/manager/orders"
+          element={
+            <RequireRole roles={[3]}>
+              <ManagerOrdersPage />
+            </RequireRole>
+          }
+        />
 
         {/* админка — доступна только админам */}
         <Route
