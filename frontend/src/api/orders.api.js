@@ -92,3 +92,32 @@ export async function cancelManagerOrder(orderId, reason) {
   );
   return data;
 }
+
+export async function getAdminOrdersList(filters = {}) {
+  const params = {};
+
+  if (filters.statusId !== undefined && filters.statusId !== null && filters.statusId !== "") {
+    params.statusId = filters.statusId;
+  }
+  if (filters.clientId !== undefined && filters.clientId !== null && filters.clientId !== "") {
+    params.clientId = filters.clientId;
+  }
+  if (filters.managerId !== undefined && filters.managerId !== null && filters.managerId !== "") {
+    params.managerId = filters.managerId;
+  }
+  if (filters.courierId !== undefined && filters.courierId !== null && filters.courierId !== "") {
+    params.courierId = filters.courierId;
+  }
+  if (filters.dateFrom) {
+    params.dateFrom = filters.dateFrom;
+  }
+  if (filters.dateTo) {
+    params.dateTo = filters.dateTo;
+  }
+
+  const { data } = await apiClient.get("/api/orders/admin", {
+    params,
+    withCredentials: true,
+  });
+  return data;
+}
