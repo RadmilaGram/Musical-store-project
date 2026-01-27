@@ -87,6 +87,51 @@ function createOrdersAdminRouter(db) {
     );
   });
 
+  router.get("/counters", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    try {
+      const [statusRows, managerRows, courierRows] = await Promise.all([
+        query(
+          "SELECT statusId AS `key`, COUNT(*) AS cnt FROM orders GROUP BY statusId"
+        ),
+        query(
+          "SELECT user_id AS `key`, COUNT(*) AS cnt FROM order_assignments WHERE user_role_id = 3 AND active = 1 GROUP BY user_id"
+        ),
+        query(
+          "SELECT user_id AS `key`, COUNT(*) AS cnt FROM order_assignments WHERE user_role_id = 4 AND active = 1 GROUP BY user_id"
+        ),
+      ]);
+
+      const buildMap = (rows) =>
+        rows.reduce((acc, row) => {
+          acc[String(row.key)] = Number(row.cnt ?? 0);
+          return acc;
+        }, {});
+
+      return res.json({
+        byStatus: buildMap(statusRows),
+        byManager: buildMap(managerRows),
+        byCourier: buildMap(courierRows),
+      });
+    } catch (err) {
+      console.error("Failed to fetch order counters:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch counters" });
+    }
+  });
+
   router.get("/", requireAuth, (req, res) => {
     if (!requireAdmin(req, res)) {
       return;

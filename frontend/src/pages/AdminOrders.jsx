@@ -38,6 +38,7 @@ export default function AdminOrders() {
     couriers,
     couriersLoading,
     couriersError,
+    counters,
     refetch,
     applyFilters,
     resetFilters,
@@ -145,7 +146,7 @@ export default function AdminOrders() {
               <MenuItem value="">All statuses</MenuItem>
               {statuses.map((status) => (
                 <MenuItem key={status.id} value={status.id}>
-                  {status.name}
+                  {status.name} ({counters.byStatus?.[status.id] ?? 0})
                 </MenuItem>
               ))}
             </Select>
@@ -173,7 +174,8 @@ export default function AdminOrders() {
               <MenuItem value="">All managers</MenuItem>
               {managers.map((manager) => (
                 <MenuItem key={manager.id} value={manager.id}>
-                  {manager.full_name} ({manager.email})
+                  {manager.full_name} ({manager.email}) (
+                  {counters.byManager?.[manager.id] ?? 0})
                 </MenuItem>
               ))}
             </Select>
@@ -192,7 +194,8 @@ export default function AdminOrders() {
               <MenuItem value="">All couriers</MenuItem>
               {couriers.map((courier) => (
                 <MenuItem key={courier.id} value={courier.id}>
-                  {courier.full_name} ({courier.email})
+                  {courier.full_name} ({courier.email}) (
+                  {counters.byCourier?.[courier.id] ?? 0})
                 </MenuItem>
               ))}
             </Select>

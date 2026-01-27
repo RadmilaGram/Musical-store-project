@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getAdminCouriers,
   getAdminManagers,
+  getAdminOrderCounters,
   getAdminOrdersList,
   getAdminOrderStatuses,
 } from "../api/orders.api";
@@ -32,6 +33,13 @@ export function useAdminOrdersList({ initialFilters } = {}) {
   const [couriers, setCouriers] = useState([]);
   const [couriersLoading, setCouriersLoading] = useState(false);
   const [couriersError, setCouriersError] = useState(null);
+  const [counters, setCounters] = useState({
+    byStatus: {},
+    byManager: {},
+    byCourier: {},
+  });
+  const [countersLoading, setCountersLoading] = useState(false);
+  const [countersError, setCountersError] = useState(null);
 
   const fetchOrders = useCallback(async (nextFilters) => {
     setLoading(true);
@@ -122,6 +130,33 @@ export function useAdminOrdersList({ initialFilters } = {}) {
     loadCouriers().catch(() => {});
   }, [loadManagers, loadCouriers]);
 
+  const loadCounters = useCallback(async () => {
+    setCountersLoading(true);
+    setCountersError(null);
+    try {
+      const response = await getAdminOrderCounters();
+      const payload =
+        response && typeof response === "object"
+          ? response
+          : { byStatus: {}, byManager: {}, byCourier: {} };
+      setCounters({
+        byStatus: payload.byStatus || {},
+        byManager: payload.byManager || {},
+        byCourier: payload.byCourier || {},
+      });
+      return response;
+    } catch (err) {
+      setCountersError(err);
+      throw err;
+    } finally {
+      setCountersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCounters().catch(() => {});
+  }, [loadCounters]);
+
   return {
     filters,
     setFilters,
@@ -137,11 +172,15 @@ export function useAdminOrdersList({ initialFilters } = {}) {
     couriers,
     couriersLoading,
     couriersError,
+    counters,
+    countersLoading,
+    countersError,
     refetch,
     applyFilters,
     resetFilters,
     loadStatuses,
     loadManagers,
     loadCouriers,
+    loadCounters,
   };
 }

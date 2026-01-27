@@ -142,3 +142,10 @@ export async function getAdminCouriers() {
   });
   return data;
 }
+
+export async function getAdminOrderCounters() {
+  const { data } = await apiClient.get("/api/orders/admin/counters", {
+    withCredentials: true,
+  });
+  return data;
+}
