@@ -18,10 +18,18 @@ function createOrdersAdminRouter(db) {
   const router = express.Router();
   const requireAuth = createRequireAuth(db);
 
-  router.get("/statuses", requireAuth, (req, res) => {
+  const requireAdmin = (req, res) => {
     const role = Number(req.user?.role);
     if (role !== 1) {
-      return res.status(403).json({ ok: false, message: "Forbidden" });
+      res.status(403).json({ ok: false, message: "Forbidden" });
+      return false;
+    }
+    return true;
+  };
+
+  router.get("/statuses", requireAuth, (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
     }
 
     db.query(
@@ -39,10 +47,49 @@ function createOrdersAdminRouter(db) {
     );
   });
 
+  router.get("/users/manager", requireAuth, (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    db.query(
+      "SELECT id, full_name, email FROM users WHERE role = 3 ORDER BY full_name ASC",
+      (err, rows) => {
+        if (err) {
+          console.error("Failed to fetch managers:", err);
+          return res
+            .status(500)
+            .json({ ok: false, message: "Failed to fetch managers" });
+        }
+
+        return res.json(rows || []);
+      }
+    );
+  });
+
+  router.get("/users/courier", requireAuth, (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    db.query(
+      "SELECT id, full_name, email FROM users WHERE role = 4 ORDER BY full_name ASC",
+      (err, rows) => {
+        if (err) {
+          console.error("Failed to fetch couriers:", err);
+          return res
+            .status(500)
+            .json({ ok: false, message: "Failed to fetch couriers" });
+        }
+
+        return res.json(rows || []);
+      }
+    );
+  });
+
   router.get("/", requireAuth, (req, res) => {
-    const role = Number(req.user?.role);
-    if (role !== 1) {
-      return res.status(403).json({ ok: false, message: "Forbidden" });
+    if (!requireAdmin(req, res)) {
+      return;
     }
 
     const filters = [];

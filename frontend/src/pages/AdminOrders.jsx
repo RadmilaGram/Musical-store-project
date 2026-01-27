@@ -32,6 +32,12 @@ export default function AdminOrders() {
     statuses,
     statusesLoading,
     statusesError,
+    managers,
+    managersLoading,
+    managersError,
+    couriers,
+    couriersLoading,
+    couriersError,
     refetch,
     applyFilters,
     resetFilters,
@@ -153,24 +159,44 @@ export default function AdminOrders() {
               setFilters((prev) => ({ ...prev, clientId: event.target.value }))
             }
           />
-          <TextField
-            size="small"
-            label="Manager ID"
-            type="number"
-            value={filters.managerId}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, managerId: event.target.value }))
-            }
-          />
-          <TextField
-            size="small"
-            label="Courier ID"
-            type="number"
-            value={filters.courierId}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, courierId: event.target.value }))
-            }
-          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="admin-orders-manager-label">Manager</InputLabel>
+            <Select
+              labelId="admin-orders-manager-label"
+              label="Manager"
+              value={filters.managerId}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, managerId: event.target.value }))
+              }
+              disabled={managersLoading}
+            >
+              <MenuItem value="">All managers</MenuItem>
+              {managers.map((manager) => (
+                <MenuItem key={manager.id} value={manager.id}>
+                  {manager.full_name} ({manager.email})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel id="admin-orders-courier-label">Courier</InputLabel>
+            <Select
+              labelId="admin-orders-courier-label"
+              label="Courier"
+              value={filters.courierId}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, courierId: event.target.value }))
+              }
+              disabled={couriersLoading}
+            >
+              <MenuItem value="">All couriers</MenuItem>
+              {couriers.map((courier) => (
+                <MenuItem key={courier.id} value={courier.id}>
+                  {courier.full_name} ({courier.email})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             size="small"
             label="From"
@@ -205,6 +231,11 @@ export default function AdminOrders() {
       {statusesError && !statusesLoading && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Failed to load statuses.
+        </Alert>
+      )}
+      {(managersError || couriersError) && !managersLoading && !couriersLoading && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Failed to load managers/couriers.
         </Alert>
       )}
 

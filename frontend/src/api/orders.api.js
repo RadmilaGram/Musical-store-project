@@ -128,3 +128,17 @@ export async function getAdminOrderStatuses() {
   });
   return data;
 }
+
+export async function getAdminManagers() {
+  const { data } = await apiClient.get("/api/orders/admin/users/manager", {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function getAdminCouriers() {
+  const { data } = await apiClient.get("/api/orders/admin/users/courier", {
+    withCredentials: true,
+  });
+  return data;
+}

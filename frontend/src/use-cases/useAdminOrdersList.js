@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getAdminOrdersList, getAdminOrderStatuses } from "../api/orders.api";
+import {
+  getAdminCouriers,
+  getAdminManagers,
+  getAdminOrdersList,
+  getAdminOrderStatuses,
+} from "../api/orders.api";
 
 const emptyFilters = {
   statusId: "",
@@ -21,6 +26,12 @@ export function useAdminOrdersList({ initialFilters } = {}) {
   const [statuses, setStatuses] = useState([]);
   const [statusesLoading, setStatusesLoading] = useState(false);
   const [statusesError, setStatusesError] = useState(null);
+  const [managers, setManagers] = useState([]);
+  const [managersLoading, setManagersLoading] = useState(false);
+  const [managersError, setManagersError] = useState(null);
+  const [couriers, setCouriers] = useState([]);
+  const [couriersLoading, setCouriersLoading] = useState(false);
+  const [couriersError, setCouriersError] = useState(null);
 
   const fetchOrders = useCallback(async (nextFilters) => {
     setLoading(true);
@@ -74,6 +85,43 @@ export function useAdminOrdersList({ initialFilters } = {}) {
     loadStatuses().catch(() => {});
   }, [loadStatuses]);
 
+  const loadManagers = useCallback(async () => {
+    setManagersLoading(true);
+    setManagersError(null);
+    try {
+      const response = await getAdminManagers();
+      const items = Array.isArray(response) ? response : response?.items ?? [];
+      setManagers(items);
+      return response;
+    } catch (err) {
+      setManagersError(err);
+      throw err;
+    } finally {
+      setManagersLoading(false);
+    }
+  }, []);
+
+  const loadCouriers = useCallback(async () => {
+    setCouriersLoading(true);
+    setCouriersError(null);
+    try {
+      const response = await getAdminCouriers();
+      const items = Array.isArray(response) ? response : response?.items ?? [];
+      setCouriers(items);
+      return response;
+    } catch (err) {
+      setCouriersError(err);
+      throw err;
+    } finally {
+      setCouriersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadManagers().catch(() => {});
+    loadCouriers().catch(() => {});
+  }, [loadManagers, loadCouriers]);
+
   return {
     filters,
     setFilters,
@@ -83,9 +131,17 @@ export function useAdminOrdersList({ initialFilters } = {}) {
     statuses,
     statusesLoading,
     statusesError,
+    managers,
+    managersLoading,
+    managersError,
+    couriers,
+    couriersLoading,
+    couriersError,
     refetch,
     applyFilters,
     resetFilters,
     loadStatuses,
+    loadManagers,
+    loadCouriers,
   };
 }
