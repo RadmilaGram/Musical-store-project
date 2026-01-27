@@ -121,3 +121,10 @@ export async function getAdminOrdersList(filters = {}) {
   });
   return data;
 }
+
+export async function getAdminOrderStatuses() {
+  const { data } = await apiClient.get("/api/orders/admin/statuses", {
+    withCredentials: true,
+  });
+  return data;
+}

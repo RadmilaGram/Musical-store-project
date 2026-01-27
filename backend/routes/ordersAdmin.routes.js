@@ -18,6 +18,27 @@ function createOrdersAdminRouter(db) {
   const router = express.Router();
   const requireAuth = createRequireAuth(db);
 
+  router.get("/statuses", requireAuth, (req, res) => {
+    const role = Number(req.user?.role);
+    if (role !== 1) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    db.query(
+      "SELECT id, name FROM order_status ORDER BY id ASC",
+      (err, rows) => {
+        if (err) {
+          console.error("Failed to fetch order statuses:", err);
+          return res
+            .status(500)
+            .json({ ok: false, message: "Failed to fetch statuses" });
+        }
+
+        return res.json(rows || []);
+      }
+    );
+  });
+
   router.get("/", requireAuth, (req, res) => {
     const role = Number(req.user?.role);
     if (role !== 1) {

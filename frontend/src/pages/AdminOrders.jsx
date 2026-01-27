@@ -1,10 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
   CircularProgress,
   Container,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -12,6 +16,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   TextField,
   Typography,
 } from "@mui/material";
@@ -24,10 +29,15 @@ export default function AdminOrders() {
     data,
     loading,
     error,
+    statuses,
+    statusesLoading,
+    statusesError,
     refetch,
     applyFilters,
     resetFilters,
   } = useAdminOrdersList();
+  const [orderBy, setOrderBy] = useState("created_at");
+  const [order, setOrder] = useState("desc");
 
   useEffect(() => {
     refetch().catch(() => {});
@@ -54,6 +64,59 @@ export default function AdminOrders() {
     return user.full_name || user.email || "-";
   };
 
+  const getSortValue = (row, key) => {
+    switch (key) {
+      case "id":
+        return Number(row.id ?? 0);
+      case "created_at":
+        return Date.parse(row.created_at || "") || 0;
+      case "statusName":
+        return row.statusName || "";
+      case "client":
+        return row.client?.full_name || "";
+      case "manager":
+        return row.manager?.full_name || "";
+      case "courier":
+        return row.courier?.full_name || "";
+      case "total_final":
+        return Number(row.total_final ?? 0);
+      default:
+        return "";
+    }
+  };
+
+  const compareValues = (aValue, bValue) => {
+    if (typeof aValue === "string" || typeof bValue === "string") {
+      return String(aValue).localeCompare(String(bValue));
+    }
+    if (aValue < bValue) return -1;
+    if (aValue > bValue) return 1;
+    return 0;
+  };
+
+  const sortedData = useMemo(() => {
+    const stabilized = data.map((row, index) => ({ row, index }));
+    const direction = order === "asc" ? 1 : -1;
+
+    stabilized.sort((a, b) => {
+      const aValue = getSortValue(a.row, orderBy);
+      const bValue = getSortValue(b.row, orderBy);
+      const comparison = compareValues(aValue, bValue);
+      if (comparison !== 0) {
+        return comparison * direction;
+      }
+      return a.index - b.index;
+    });
+
+    return stabilized.map((item) => item.row);
+  }, [data, order, orderBy]);
+
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
   return (
     <Container sx={{ py: 4 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
@@ -62,15 +125,25 @@ export default function AdminOrders() {
 
       <Stack spacing={2} sx={{ mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-          <TextField
-            size="small"
-            label="Status ID"
-            type="number"
-            value={filters.statusId}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, statusId: event.target.value }))
-            }
-          />
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id="admin-orders-status-label">Status</InputLabel>
+            <Select
+              labelId="admin-orders-status-label"
+              label="Status"
+              value={filters.statusId}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, statusId: event.target.value }))
+              }
+              disabled={statusesLoading}
+            >
+              <MenuItem value="">All statuses</MenuItem>
+              {statuses.map((status) => (
+                <MenuItem key={status.id} value={status.id}>
+                  {status.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             size="small"
             label="Client ID"
@@ -129,6 +202,12 @@ export default function AdminOrders() {
         </Stack>
       </Stack>
 
+      {statusesError && !statusesLoading && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Failed to load statuses.
+        </Alert>
+      )}
+
       {loading && (
         <Stack alignItems="center" sx={{ py: 4 }}>
           <CircularProgress />
@@ -153,17 +232,80 @@ export default function AdminOrders() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Client</TableCell>
-                <TableCell>Manager</TableCell>
-                <TableCell>Courier</TableCell>
-                <TableCell align="right">Total Final</TableCell>
+                <TableCell sortDirection={orderBy === "id" ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === "id"}
+                    direction={orderBy === "id" ? order : "asc"}
+                    onClick={() => handleRequestSort("id")}
+                  >
+                    Order #
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sortDirection={orderBy === "created_at" ? order : false}
+                >
+                  <TableSortLabel
+                    active={orderBy === "created_at"}
+                    direction={orderBy === "created_at" ? order : "asc"}
+                    onClick={() => handleRequestSort("created_at")}
+                  >
+                    Created
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sortDirection={orderBy === "statusName" ? order : false}
+                >
+                  <TableSortLabel
+                    active={orderBy === "statusName"}
+                    direction={orderBy === "statusName" ? order : "asc"}
+                    onClick={() => handleRequestSort("statusName")}
+                  >
+                    Status
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={orderBy === "client" ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === "client"}
+                    direction={orderBy === "client" ? order : "asc"}
+                    onClick={() => handleRequestSort("client")}
+                  >
+                    Client
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={orderBy === "manager" ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === "manager"}
+                    direction={orderBy === "manager" ? order : "asc"}
+                    onClick={() => handleRequestSort("manager")}
+                  >
+                    Manager
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={orderBy === "courier" ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === "courier"}
+                    direction={orderBy === "courier" ? order : "asc"}
+                    onClick={() => handleRequestSort("courier")}
+                  >
+                    Courier
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sortDirection={orderBy === "total_final" ? order : false}
+                >
+                  <TableSortLabel
+                    active={orderBy === "total_final"}
+                    direction={orderBy === "total_final" ? order : "asc"}
+                    onClick={() => handleRequestSort("total_final")}
+                  >
+                    Total Final
+                  </TableSortLabel>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((order) => (
+              {sortedData.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{formatDate(order.created_at)}</TableCell>

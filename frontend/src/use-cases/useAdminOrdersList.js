@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { getAdminOrdersList } from "../api/orders.api";
+import { useCallback, useEffect, useState } from "react";
+import { getAdminOrdersList, getAdminOrderStatuses } from "../api/orders.api";
 
 const emptyFilters = {
   statusId: "",
@@ -18,6 +18,9 @@ export function useAdminOrdersList({ initialFilters } = {}) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [statuses, setStatuses] = useState([]);
+  const [statusesLoading, setStatusesLoading] = useState(false);
+  const [statusesError, setStatusesError] = useState(null);
 
   const fetchOrders = useCallback(async (nextFilters) => {
     setLoading(true);
@@ -51,14 +54,38 @@ export function useAdminOrdersList({ initialFilters } = {}) {
     filters,
   ]);
 
+  const loadStatuses = useCallback(async () => {
+    setStatusesLoading(true);
+    setStatusesError(null);
+    try {
+      const response = await getAdminOrderStatuses();
+      const items = Array.isArray(response) ? response : response?.items ?? [];
+      setStatuses(items);
+      return response;
+    } catch (err) {
+      setStatusesError(err);
+      throw err;
+    } finally {
+      setStatusesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatuses().catch(() => {});
+  }, [loadStatuses]);
+
   return {
     filters,
     setFilters,
     data,
     loading,
     error,
+    statuses,
+    statusesLoading,
+    statusesError,
     refetch,
     applyFilters,
     resetFilters,
+    loadStatuses,
   };
 }
