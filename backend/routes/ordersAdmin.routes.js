@@ -1,6 +1,15 @@
 const express = require("express");
 const createRequireAuth = require("../middlewares/requireAuth");
 
+const allowedTransitions = {
+  new: ["preparing", "canceled"],
+  preparing: ["ready", "canceled"],
+  ready: ["delivering", "canceled"],
+  delivering: ["finished", "canceled"],
+  finished: [],
+  canceled: [],
+};
+
 function parseOptionalId(value, fieldName) {
   if (value === undefined || value === null || value === "") {
     return { value: null };
@@ -129,6 +138,616 @@ function createOrdersAdminRouter(db) {
       return res
         .status(500)
         .json({ ok: false, message: "Failed to fetch counters" });
+    }
+  });
+
+  router.post("/:id/status", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const statusId = Number(req.body?.statusId);
+    if (!Number.isInteger(statusId) || statusId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid statusId" });
+    }
+
+    const noteRaw = req.body?.note;
+    const note = typeof noteRaw === "string" ? noteRaw.trim() : null;
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        `
+        SELECT o.id, o.statusId AS oldStatusId, os.name AS oldStatusName
+        FROM orders o
+        JOIN order_status os ON os.id = o.statusId
+        WHERE o.id = ?
+        FOR UPDATE
+        `,
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (Number(orderRow.oldStatusId) === Number(statusId)) {
+        await rollback();
+        return res
+          .status(400)
+          .json({ ok: false, message: "Status is already set" });
+      }
+
+      const statusRows = await query(
+        "SELECT id, name FROM order_status WHERE id = ? LIMIT 1",
+        [statusId]
+      );
+      const statusRow = statusRows?.[0];
+      if (!statusRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Status not found" });
+      }
+
+      const allowed = allowedTransitions[orderRow.oldStatusName] || [];
+      if (!allowed.includes(statusRow.name)) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Invalid status transition" });
+      }
+
+      if (
+        statusRow.name === "canceled" &&
+        ["delivering", "finished"].includes(orderRow.oldStatusName)
+      ) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Cancel is not allowed after delivery" });
+      }
+
+      await query("UPDATE orders SET statusId = ? WHERE id = ?", [
+        statusRow.id,
+        orderId,
+      ]);
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.oldStatusId, statusRow.id, req.user?.id, note]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, statusId: statusRow.id });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to update order status:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update status" });
+    }
+  });
+
+  router.post("/:id/assign", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const roleId = Number(req.body?.user_role_id);
+    const userId = Number(req.body?.user_id);
+    if (![3, 4].includes(roleId)) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Invalid user_role_id" });
+    }
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid user_id" });
+    }
+
+    const roleLabel = roleId === 3 ? "manager" : "courier";
+    const note = `Assigned ${roleLabel} to user ${userId}`;
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const userRows = await query(
+        "SELECT id, role FROM users WHERE id = ? LIMIT 1",
+        [userId]
+      );
+      const userRow = userRows?.[0];
+      if (!userRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "User not found" });
+      }
+      if (Number(userRow.role) !== roleId) {
+        await rollback();
+        return res
+          .status(400)
+          .json({ ok: false, message: "User role mismatch" });
+      }
+
+      await query(
+        "UPDATE order_assignments SET active = 0, unassigned_at = NOW() WHERE order_id = ? AND user_role_id = ? AND active = 1",
+        [orderId, roleId]
+      );
+      await query(
+        "INSERT INTO order_assignments (order_id, user_role_id, user_id, active, assigned_at) VALUES (?, ?, ?, 1, NOW())",
+        [orderId, roleId, userId]
+      );
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, note]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, user_role_id: roleId, user_id: userId });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to assign user:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to assign user" });
+    }
+  });
+
+  router.post("/:id/unassign", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const roleId = Number(req.body?.user_role_id);
+    if (![3, 4].includes(roleId)) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Invalid user_role_id" });
+    }
+
+    const noteRaw = req.body?.note;
+    const roleLabel = roleId === 3 ? "manager" : "courier";
+    const note =
+      typeof noteRaw === "string" && noteRaw.trim()
+        ? noteRaw.trim()
+        : `Unassigned ${roleLabel}`;
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const result = await query(
+        "UPDATE order_assignments SET active = 0, unassigned_at = NOW() WHERE order_id = ? AND user_role_id = ? AND active = 1",
+        [orderId, roleId]
+      );
+
+      const affectedRows = result?.affectedRows ?? 0;
+      if (affectedRows === 0) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "No active assignment" });
+      }
+
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, note]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, user_role_id: roleId });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to unassign user:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to unassign user" });
+    }
+  });
+
+  router.post("/:id/cancel", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const reasonRaw = req.body?.reason;
+    const reason = typeof reasonRaw === "string" ? reasonRaw.trim() : "";
+    if (!reason) {
+      return res.status(400).json({ ok: false, message: "Reason is required" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        `
+        SELECT o.id, o.statusId AS oldStatusId, os.name AS oldStatusName
+        FROM orders o
+        JOIN order_status os ON os.id = o.statusId
+        WHERE o.id = ?
+        FOR UPDATE
+        `,
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      if (orderRow.oldStatusName === "canceled") {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order already canceled" });
+      }
+
+      if (["delivering", "finished"].includes(orderRow.oldStatusName)) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Order cannot be canceled" });
+      }
+
+      const canceledRows = await query(
+        "SELECT id FROM order_status WHERE name = 'canceled' LIMIT 1"
+      );
+      const canceledStatusId = canceledRows?.[0]?.id;
+      if (!canceledStatusId) {
+        await rollback();
+        return res
+          .status(500)
+          .json({ ok: false, message: "Missing order status" });
+      }
+
+      await query(
+        "UPDATE orders SET statusId = ?, canceled_reason = ? WHERE id = ?",
+        [canceledStatusId, reason, orderId]
+      );
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.oldStatusId, canceledStatusId, req.user?.id, reason]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId, statusId: canceledStatusId });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to cancel order:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to cancel order" });
+    }
+  });
+
+  router.patch("/:id/delivery", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const contactName = req.body?.contact_name;
+    const deliveryAddress = req.body?.delivery_address;
+    const deliveryPhone = req.body?.delivery_phone;
+
+    const updates = [];
+    const params = [];
+
+    if (typeof contactName === "string") {
+      updates.push("contact_name = ?");
+      params.push(contactName);
+    }
+    if (typeof deliveryAddress === "string") {
+      updates.push("delivery_address = ?");
+      params.push(deliveryAddress);
+    }
+    if (typeof deliveryPhone === "string") {
+      updates.push("delivery_phone = ?");
+      params.push(deliveryPhone);
+    }
+
+    if (updates.length === 0) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "No delivery fields provided" });
+    }
+
+    const changedFields = [];
+    if (typeof contactName === "string") changedFields.push("contact_name");
+    if (typeof deliveryAddress === "string") changedFields.push("delivery_address");
+    if (typeof deliveryPhone === "string") changedFields.push("delivery_phone");
+    const note = `Updated delivery fields: ${changedFields.join(", ")}`;
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      await query(
+        `UPDATE orders SET ${updates.join(", ")} WHERE id = ?`,
+        [...params, orderId]
+      );
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, note]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to update delivery:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update delivery" });
+    }
+  });
+
+  router.patch("/:id/comment-internal", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const commentInternal = req.body?.comment_internal;
+    if (typeof commentInternal !== "string") {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Invalid comment_internal" });
+    }
+
+    const note = "Updated internal comment";
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    const begin = () =>
+      new Promise((resolve, reject) => {
+        db.beginTransaction((err) => (err ? reject(err) : resolve()));
+      });
+
+    const rollback = () =>
+      new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+
+    const commit = () =>
+      new Promise((resolve, reject) => {
+        db.commit((err) => {
+          if (err) {
+            return db.rollback(() => reject(err));
+          }
+          resolve();
+        });
+      });
+
+    try {
+      await begin();
+
+      const orderRows = await query(
+        "SELECT id, statusId FROM orders WHERE id = ? FOR UPDATE",
+        [orderId]
+      );
+      const orderRow = orderRows?.[0];
+      if (!orderRow) {
+        await rollback();
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      await query("UPDATE orders SET comment_internal = ? WHERE id = ?", [
+        commentInternal,
+        orderId,
+      ]);
+      await query(
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, note]
+      );
+
+      await commit();
+      return res.json({ ok: true, orderId });
+    } catch (err) {
+      await rollback();
+      console.error("Failed to update internal comment:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to update comment" });
     }
   });
 
