@@ -19,6 +19,7 @@ import CategoryPage from "./pages/CategoryPage";
 import Cart from "./pages/Cart";
 import TradeIn from "./pages/TradeIn";
 import Admin from "./pages/Admin";
+import AdminOrders from "./pages/AdminOrders";
 
 // Login popup (MUI + RHF + yup) — смонтируем у корня
 import LoginDialog from "./components/LoginDialog";
@@ -120,6 +121,14 @@ function App() {
         />
 
         {/* админка — доступна только админам */}
+        <Route
+          path="/admin/orders"
+          element={
+            <RequireRole roles={[1]}>
+              <AdminOrders />
+            </RequireRole>
+          }
+        />
         <Route
           path="/admin"
           element={

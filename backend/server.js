@@ -15,6 +15,7 @@ const createSpecialFieldsRouter = require("./routes/specialFields.routes");
 const createTradeInConditionsRouter = require("./routes/tradeInConditions.routes");
 const createTradeInCatalogRouter = require("./routes/tradeInCatalog.routes");
 const createOrdersRouter = require("./routes/orders.routes");
+const createOrdersAdminRouter = require("./routes/ordersAdmin.routes");
 const createAuthRouter = require("./routes/auth.routes");
 
 const bcrypt = require("bcrypt");
@@ -75,6 +76,7 @@ app.use("/api/special-field-datatypes", createSpecialFieldDatatypesRouter(db));
 app.use("/api/special-fields", createSpecialFieldsRouter(db));
 app.use("/api/trade-in-conditions", createTradeInConditionsRouter(db));
 app.use("/api/trade-in-catalog", createTradeInCatalogRouter(db));
+app.use("/api/orders/admin", createOrdersAdminRouter(db));
 app.use("/api/orders", createOrdersRouter(db));
 app.use("/api/auth", createAuthRouter(db));
 
