@@ -20,6 +20,9 @@ import Cart from "./pages/Cart";
 import TradeIn from "./pages/TradeIn";
 import Admin from "./pages/Admin";
 import AdminOrders from "./pages/AdminOrders";
+import RegisterPage from "./pages/RegisterPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
 
 // Login popup (MUI + RHF + yup) — смонтируем у корня
 import LoginDialog from "./components/LoginDialog";
@@ -104,6 +107,15 @@ function App() {
       <Routes>
         {/* login как попап */}
         <Route path="/login" element={<LoginPopupRoute />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/change-password"
+          element={
+            <RequireAuth>
+              <ChangePasswordPage />
+            </RequireAuth>
+          }
+        />
 
         {/* публичные маршруты */}
         <Route path="/" element={<HomePage />} />
@@ -126,6 +138,14 @@ function App() {
           element={
             <RequireRole roles={[1]}>
               <AdminOrders />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <RequireRole roles={[1]}>
+              <AdminUsersPage />
             </RequireRole>
           }
         />

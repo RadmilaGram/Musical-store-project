@@ -133,3 +133,28 @@ export const getMe = async () => {
   const { data } = await apiClient.get("/api/auth/me");
   return data;
 };
+
+export const registerUser = async ({
+  full_name,
+  email,
+  phone,
+  address,
+  password,
+}) => {
+  const { data } = await apiClient.post("/api/auth/register", {
+    full_name,
+    email,
+    phone,
+    address,
+    password,
+  });
+  return data;
+};
+
+export const changePassword = async ({ current_password, new_password }) => {
+  const { data } = await apiClient.post("/api/auth/change-password", {
+    current_password,
+    new_password,
+  });
+  return data;
+};

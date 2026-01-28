@@ -14,7 +14,10 @@ function createRequireAuth(db) {
       if (!user) {
         return res.status(401).json({ ok: false, message: "Unauthorized" });
       }
-      const { password, password_hash, ...safeUser } = user;
+      if (Number(user.is_active) === 0) {
+        return res.status(403).json({ ok: false, message: "Forbidden" });
+      }
+      const { password, ...safeUser } = user;
       req.user = safeUser;
       return next();
     });

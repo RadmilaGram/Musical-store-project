@@ -32,12 +32,18 @@ export default function Header() {
 
   if (user) {
     basePages.push({ menuTitle: "My orders", pageURL: "/my/orders" });
+    basePages.push({ menuTitle: "Change password", pageURL: "/change-password" });
+  }
+
+  if (!isLoggedIn) {
+    basePages.push({ menuTitle: "Register", pageURL: "/register" });
   }
 
   // Admin видит Admin/Manager/Courier; Manager (3) — свою зону; Courier (4) — свою
   if (role === 1) {
     basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });
     basePages.push({ menuTitle: "Admin Orders", pageURL: "/admin/orders" });
+    basePages.push({ menuTitle: "Admin Users", pageURL: "/admin/users" });
     basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
     basePages.push({ menuTitle: "Courier", pageURL: "/courier/orders" });
   } else if (role === 3) {

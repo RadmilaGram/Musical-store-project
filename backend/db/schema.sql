@@ -239,6 +239,7 @@ CREATE TABLE `users` (
   `password` varchar(128) NOT NULL,
   `address` varchar(500) NOT NULL,
   `role` int NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email_UNIQUE` (`email`),
   KEY `user_fole_fk_idx` (`role`),

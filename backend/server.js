@@ -17,6 +17,8 @@ const createTradeInCatalogRouter = require("./routes/tradeInCatalog.routes");
 const createOrdersRouter = require("./routes/orders.routes");
 const createOrdersAdminRouter = require("./routes/ordersAdmin.routes");
 const createAuthRouter = require("./routes/auth.routes");
+const createUsersRouter = require("./routes/users.routes");
+const createAdminUsersRouter = require("./routes/adminUsers.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -79,6 +81,8 @@ app.use("/api/trade-in-catalog", createTradeInCatalogRouter(db));
 app.use("/api/orders/admin", createOrdersAdminRouter(db));
 app.use("/api/orders", createOrdersRouter(db));
 app.use("/api/auth", createAuthRouter(db));
+app.use("/api/users", createUsersRouter(db));
+app.use("/api/admin", createAdminUsersRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,
@@ -98,7 +102,7 @@ async function hashPassword(plainPassword) {
 //   const { username, password } = req.body;
 //   const passwordHash = await hashPassword(password);
 //   // Сохраняем в БД: username + passwordHash
-//   await db.query('INSERT INTO users(username, password_hash) VALUES(?, ?)', [username, passwordHash]);
+//   await db.query('INSERT INTO users(username, password) VALUES(?, ?)', [username, passwordHash]);
 //   res.sendStatus(201);
 // });
 
@@ -132,6 +136,10 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).send("Неверные учетные данные");
     }
 
+    if (Number(results[0].is_active) === 0) {
+      return res.status(403).send("Пользователь деактивирован");
+    }
+
     const ok = await verifyPassword(password, results[0].password);
     if (!ok) {
       return res.status(401).send("Неверные учетные данные");
@@ -140,8 +148,7 @@ app.post("/api/login", async (req, res) => {
     // console.log(results[0])
 
     req.session.userId = results[0].id;
-    const { password: _password, password_hash: _passwordHash, ...safeUser } =
-      results[0];
+    const { password: _password, ...safeUser } = results[0];
     res.json({ user: safeUser }); // Отправляем данные на фронтенд
   });
 });
