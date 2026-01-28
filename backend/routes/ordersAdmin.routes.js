@@ -132,6 +132,286 @@ function createOrdersAdminRouter(db) {
     }
   });
 
+  router.get("/:id/history", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    try {
+      const orderExistsRows = await query(
+        "SELECT 1 FROM orders WHERE id = ? LIMIT 1",
+        [orderId]
+      );
+      if (orderExistsRows.length === 0) {
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const historyRows = await query(
+        `
+        SELECT
+          h.id,
+          h.order_id,
+          h.oldStatusId,
+          h.newStatusId,
+          h.note,
+          h.changed_at,
+          os_old.name AS oldStatusName,
+          os_new.name AS newStatusName,
+          u.id AS changedById,
+          u.full_name AS changedByName,
+          u.email AS changedByEmail
+        FROM order_status_history h
+        LEFT JOIN order_status os_old ON os_old.id = h.oldStatusId
+        JOIN order_status os_new ON os_new.id = h.newStatusId
+        LEFT JOIN users u ON u.id = h.changed_by
+        WHERE h.order_id = ?
+        ORDER BY h.changed_at DESC
+        `,
+        [orderId]
+      );
+
+      const items = historyRows.map((row) => ({
+        id: row.id,
+        order_id: row.order_id,
+        oldStatusId: row.oldStatusId,
+        oldStatusName: row.oldStatusName ?? null,
+        newStatusId: row.newStatusId,
+        newStatusName: row.newStatusName ?? null,
+        changed_by: row.changedById
+          ? {
+              id: row.changedById,
+              full_name: row.changedByName,
+              email: row.changedByEmail,
+            }
+          : null,
+        note: row.note ?? null,
+        changed_at: row.changed_at,
+      }));
+
+      return res.json({ items });
+    } catch (err) {
+      console.error("Failed to fetch order history:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch order history" });
+    }
+  });
+
+  router.get("/:id", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const orderId = Number(req.params.id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ ok: false, message: "Invalid id" });
+    }
+
+    const query = (sql, params = []) =>
+      new Promise((resolve, reject) => {
+        db.query(sql, params, (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows || []);
+        });
+      });
+
+    try {
+      const headerRows = await query(
+        `
+        SELECT
+          o.id,
+          o.statusId,
+          o.comment_client,
+          o.comment_internal,
+          o.contact_name,
+          o.delivery_address,
+          o.delivery_phone,
+          o.total_price_items,
+          o.total_discount,
+          o.total_final,
+          o.courier_taken_at,
+          o.delivered_at,
+          o.canceled_reason,
+          o.created_at,
+          o.updated_at,
+          os.name AS statusName,
+          u.id AS clientId,
+          u.full_name AS clientFullName,
+          u.email AS clientEmail,
+          u.phone AS clientPhone
+        FROM orders o
+        JOIN order_status os ON os.id = o.statusId
+        JOIN users u ON u.id = o.user_id
+        WHERE o.id = ?
+        LIMIT 1
+        `,
+        [orderId]
+      );
+
+      const header = headerRows[0];
+      if (!header) {
+        return res.status(404).json({ ok: false, message: "Order not found" });
+      }
+
+      const itemsRows = await query(
+        `
+        SELECT
+          oi.id,
+          oi.product_id,
+          oi.quantity,
+          oi.price_each,
+          oi.subtotal,
+          p.name AS productName,
+          p.price AS productPrice,
+          p.img AS productImage
+        FROM order_items oi
+        JOIN product p ON p.id = oi.product_id
+        WHERE oi.order_id = ?
+        `,
+        [orderId]
+      );
+
+      const tradeInRows = await query(
+        `
+        SELECT
+          oti.id,
+          oti.product_id,
+          oti.condition_code,
+          oti.base_amount,
+          oti.percent,
+          oti.discount_amount,
+          p.name AS productName,
+          p.price AS productPrice,
+          p.img AS productImage
+        FROM order_trade_in oti
+        JOIN product p ON p.id = oti.product_id
+        WHERE oti.order_id = ?
+        `,
+        [orderId]
+      );
+
+      const assignmentsRows = await query(
+        `
+        SELECT
+          oa.user_role_id,
+          u.id AS userId,
+          u.full_name AS userFullName,
+          u.email AS userEmail
+        FROM order_assignments oa
+        JOIN users u ON u.id = oa.user_id
+        WHERE oa.order_id = ?
+          AND oa.active = 1
+          AND oa.user_role_id IN (3, 4)
+        `,
+        [orderId]
+      );
+
+      const assignments = {
+        manager: null,
+        courier: null,
+      };
+
+      assignmentsRows.forEach((row) => {
+        const payload = {
+          id: row.userId,
+          full_name: row.userFullName,
+          email: row.userEmail,
+        };
+        if (Number(row.user_role_id) === 3) {
+          assignments.manager = payload;
+        }
+        if (Number(row.user_role_id) === 4) {
+          assignments.courier = payload;
+        }
+      });
+
+      const items = itemsRows.map((row) => ({
+        id: row.id,
+        product_id: row.product_id,
+        product: {
+          id: row.product_id,
+          name: row.productName,
+          price: row.productPrice,
+          img: row.productImage,
+        },
+        quantity: row.quantity,
+        price_each: row.price_each,
+        subtotal: row.subtotal,
+      }));
+
+      const tradeIn = tradeInRows.map((row) => ({
+        id: row.id,
+        product_id: row.product_id,
+        product: {
+          id: row.product_id,
+          name: row.productName,
+          price: row.productPrice,
+          img: row.productImage,
+        },
+        condition_code: row.condition_code,
+        base_amount: row.base_amount,
+        percent: row.percent,
+        discount_amount: row.discount_amount,
+      }));
+
+      return res.json({
+        order: {
+          id: header.id,
+          statusId: header.statusId,
+          statusName: header.statusName,
+        },
+        client: {
+          id: header.clientId,
+          full_name: header.clientFullName,
+          email: header.clientEmail,
+          phone: header.clientPhone,
+        },
+        delivery: {
+          contact_name: header.contact_name,
+          delivery_address: header.delivery_address,
+          delivery_phone: header.delivery_phone,
+        },
+        comments: {
+          comment_client: header.comment_client,
+          comment_internal: header.comment_internal,
+          canceled_reason: header.canceled_reason,
+        },
+        totals: {
+          total_price_items: header.total_price_items,
+          total_discount: header.total_discount,
+          total_final: header.total_final,
+        },
+        timestamps: {
+          created_at: header.created_at,
+          updated_at: header.updated_at,
+          courier_taken_at: header.courier_taken_at,
+          delivered_at: header.delivered_at,
+        },
+        items,
+        tradeIn,
+        assignments,
+      });
+    } catch (err) {
+      console.error("Failed to fetch admin order details:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to fetch order details" });
+    }
+  });
+
   router.get("/", requireAuth, (req, res) => {
     if (!requireAdmin(req, res)) {
       return;
