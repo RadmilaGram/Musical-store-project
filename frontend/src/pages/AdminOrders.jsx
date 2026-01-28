@@ -21,6 +21,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useAdminOrdersList } from "../use-cases/useAdminOrdersList";
+import { useAdminOrderDetails } from "../use-cases/useAdminOrderDetails";
+import AdminOrderDetailsDialog from "./admin/AdminOrderDetailsDialog";
 
 export default function AdminOrders() {
   const {
@@ -43,6 +45,7 @@ export default function AdminOrders() {
     applyFilters,
     resetFilters,
   } = useAdminOrdersList();
+  const orderDetails = useAdminOrderDetails({ onAfterAction: refetch });
   const [orderBy, setOrderBy] = useState("created_at");
   const [order, setOrder] = useState("desc");
 
@@ -340,7 +343,12 @@ export default function AdminOrders() {
             </TableHead>
             <TableBody>
               {sortedData.map((order) => (
-                <TableRow key={order.id}>
+                <TableRow
+                  key={order.id}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => orderDetails.open(order.id)}
+                >
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{formatDate(order.created_at)}</TableCell>
                   <TableCell>{order.statusName}</TableCell>
@@ -354,6 +362,30 @@ export default function AdminOrders() {
           </Table>
         </TableContainer>
       )}
+
+      <AdminOrderDetailsDialog
+        open={orderDetails.isOpen}
+        onClose={orderDetails.close}
+        orderId={orderDetails.orderId}
+        details={orderDetails.details}
+        detailsLoading={orderDetails.detailsLoading}
+        detailsError={orderDetails.detailsError}
+        history={orderDetails.history}
+        historyLoading={orderDetails.historyLoading}
+        historyError={orderDetails.historyError}
+        actionLoading={orderDetails.actionLoading}
+        actionError={orderDetails.actionError}
+        statuses={statuses}
+        managers={managers}
+        couriers={couriers}
+        onFetchHistory={orderDetails.fetchHistory}
+        onChangeStatus={orderDetails.doChangeStatus}
+        onAssign={orderDetails.doAssign}
+        onUnassign={orderDetails.doUnassign}
+        onCancel={orderDetails.doCancel}
+        onUpdateDelivery={orderDetails.doUpdateDelivery}
+        onUpdateComment={orderDetails.doUpdateComment}
+      />
     </Container>
   );
 }
