@@ -1,5 +1,6 @@
 // src/hooks/useAuth.js
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_URL } from "../utils/apiService/ApiService";
 import { getMe, logoutUser } from "../utils/apiService/ApiService";
@@ -72,6 +73,7 @@ export function useLogout() {
     } catch {}
     dispatch(logoutAction());
     dispatch(resetTradeIn());
+    window.location.replace("/");
   };
 }
 

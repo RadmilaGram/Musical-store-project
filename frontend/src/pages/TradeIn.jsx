@@ -16,6 +16,7 @@ import { useSpecialFieldsCrud } from "../features/admin/specialFields/useSpecial
 import { useProductById } from "../use-cases/products/useProductById";
 import { computeTradeInOffer } from "../use-cases/trade-in/computeTradeInOffer";
 import { API_URL } from "../utils/apiService/ApiService";
+import PageContainer from "../components/ui/PageContainer";
 
 export default function TradeIn() {
   const { types } = useProductTypes();
@@ -182,13 +183,14 @@ export default function TradeIn() {
   if (error) return <Typography color="error">Error loading products.</Typography>;
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
-      <TradeInHeader
-        title="Trade-In"
-        subtitle="Select items you want to trade in to see your estimated discount."
-      />
-      <form onSubmit={handleSubmit(onAdd)}>
-        <Stack spacing={2}>
+    <PageContainer>
+      <Box sx={{ maxWidth: 800, mx: "auto" }}>
+        <TradeInHeader
+          title="Trade-in"
+          subtitle="Select items you want to trade in to see your estimated discount."
+        />
+        <form onSubmit={handleSubmit(onAdd)}>
+          <Stack spacing={2}>
           <SelectField
             control={control}
             name="typeId"
@@ -257,32 +259,33 @@ export default function TradeIn() {
               Loading product details…
             </Typography>
           )}
-        </Stack>
-      </form>
+          </Stack>
+        </form>
 
-      <Box sx={{ mt: 4 }}>
-        <TradeInSelectedSummary totalDiscount={totalDiscount} />
-        <TradeInSelectedList
-          items={selectedList}
-          resolveAssetUrl={(raw, item) => {
-            const imageUrl = resolveAssetUrl(raw);
-            if (!imageUrl) return null;
-            const imageKey = String(
-              item?.prod?.id ??
-                item?.prod?.productId ??
-                item?.productId ??
-                item?.id ??
-                `${item?.prod?.name ?? "unknown"}-${item?.conditionCode ?? ""}`
-            );
-            const hasImageError = failedImagesRef.current.has(imageKey);
-            return hasImageError ? null : imageUrl;
-          }}
-          onImageError={handleImageError}
-          onRemove={onRemove}
-          onIncrement={increment}
-          onDecrement={decrement}
-        />
+        <Box sx={{ mt: 4 }}>
+          <TradeInSelectedSummary totalDiscount={totalDiscount} />
+          <TradeInSelectedList
+            items={selectedList}
+            resolveAssetUrl={(raw, item) => {
+              const imageUrl = resolveAssetUrl(raw);
+              if (!imageUrl) return null;
+              const imageKey = String(
+                item?.prod?.id ??
+                  item?.prod?.productId ??
+                  item?.productId ??
+                  item?.id ??
+                  `${item?.prod?.name ?? "unknown"}-${item?.conditionCode ?? ""}`
+              );
+              const hasImageError = failedImagesRef.current.has(imageKey);
+              return hasImageError ? null : imageUrl;
+            }}
+            onImageError={handleImageError}
+            onRemove={onRemove}
+            onIncrement={increment}
+            onDecrement={decrement}
+          />
+        </Box>
       </Box>
-    </Box>
+    </PageContainer>
   );
 }

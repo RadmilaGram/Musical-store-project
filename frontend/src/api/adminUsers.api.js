@@ -30,3 +30,10 @@ export async function updateAdminUserActive(userId, isActive) {
   );
   return data;
 }
+
+export async function createStaffUser(payload) {
+  const { data } = await apiClient.post("/api/admin/users", payload, {
+    withCredentials: true,
+  });
+  return data;
+}

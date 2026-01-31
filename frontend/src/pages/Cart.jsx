@@ -21,6 +21,8 @@ import { useCart } from "../hooks/useCart";
 import ProtectedActionButton from "../components/ProtectedActionButton";
 import { useSpecialFieldsCatalog } from "../hooks/useSpecialFieldsCatalog";
 import { useAuth } from "../hooks/useAuth";
+import PageContainer from "../components/ui/PageContainer";
+import PageTitle from "../components/ui/PageTitle";
 
 export default function Cart() {
   const { items: cartItems, clear, total: purchaseTotal } = useCart();
@@ -152,177 +154,177 @@ export default function Cart() {
     Boolean(delivery.deliveryAddress?.trim());
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: "auto" }}>
-      <Typography variant="h5" mb={2} align="center">
-        Cart
-      </Typography>
+    <PageContainer>
+      <Box sx={{ maxWidth: 800, mx: "auto" }}>
+        <PageTitle>Cart</PageTitle>
 
-      {cartItems.length === 0 ? (
-        <Typography>Your cart is empty.</Typography>
-      ) : (
-        <Stack spacing={2} alignItems="center">
-          {/* Cart Items as ProductCard */}
-          {cartItems.map((item) => {
-            return (
-              <Box
-                key={item.id}
-                sx={{ position: "relative", display: "inline-block", mb: 4 }}
-              >
-                <ProductCard
-                  showRemove={true}
-                  product={item}
-                  specialFieldsCatalog={specialFieldsCatalog}
-                />
-              </Box>
-            );
-          })}
-
-          {/* Trade-In Summary (replaces Total) */}
-          {tradeInItems.length > 0 ? (
-            <Box
-              sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}
-              align="right"
-              width="100%"
-            >
-              <Stack spacing={1} sx={{ textAlign: "right" }}>
-                <Typography color="text.primary">
-                  Price: ${purchaseTotal.toFixed(2)}
-                </Typography>
-                <Typography color="success.main">
-                  Discount: -${effectiveDiscount.toFixed(2)}
-                </Typography>
-                {unusedDiscount > 0 && (
-                  <Typography color="error">
-                    Unused Discount: ${unusedDiscount.toFixed(2)}
-                  </Typography>
-                )}
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: "1.25rem",
-                    color: "success.main",
-                  }}
+        {cartItems.length === 0 ? (
+          <Typography>Your cart is empty.</Typography>
+        ) : (
+          <Stack spacing={2} alignItems="center">
+            {/* Cart Items as ProductCard */}
+            {cartItems.map((item) => {
+              return (
+                <Box
+                  key={item.id}
+                  sx={{ position: "relative", display: "inline-block", mb: 4 }}
                 >
-                  Final Price: ${finalPrice.toFixed(2)}
+                  <ProductCard
+                    showRemove={true}
+                    product={item}
+                    specialFieldsCatalog={specialFieldsCatalog}
+                  />
+                </Box>
+              );
+            })}
+
+            {/* Trade-In Summary (replaces Total) */}
+            {tradeInItems.length > 0 ? (
+              <Box
+                sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}
+                align="right"
+                width="100%"
+              >
+                <Stack spacing={1} sx={{ textAlign: "right" }}>
+                  <Typography color="text.primary">
+                    Price: ${purchaseTotal.toFixed(2)}
+                  </Typography>
+                  <Typography color="success.main">
+                    Discount: -${effectiveDiscount.toFixed(2)}
+                  </Typography>
+                  {unusedDiscount > 0 && (
+                    <Typography color="error">
+                      Unused Discount: ${unusedDiscount.toFixed(2)}
+                    </Typography>
+                  )}
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "1.25rem",
+                      color: "success.main",
+                    }}
+                  >
+                    Final Price: ${finalPrice.toFixed(2)}
+                  </Typography>
+                </Stack>
+              </Box>
+            ) : (
+              <Box
+                sx={{ display: "flex", justifyContent: "flex-end" }}
+                align="right"
+                width="100%"
+              >
+                <Typography variant="h6">
+                  Total: ${purchaseTotal.toFixed(2)}
                 </Typography>
-              </Stack>
-            </Box>
-          ) : (
-            <Box
-              sx={{ display: "flex", justifyContent: "flex-end" }}
-              align="right"
-              width="100%"
+              </Box>
+            )}
+
+            <ProtectedActionButton
+              onAuthedClick={openDeliveryDialog}
+              isLoading={loading}
+              disabled={loading || cartItems.length === 0}
             >
-              <Typography variant="h6">
-                Total: ${purchaseTotal.toFixed(2)}
-              </Typography>
-            </Box>
-          )}
-
-          <ProtectedActionButton
-            onAuthedClick={openDeliveryDialog}
-            isLoading={loading}
-            disabled={loading || cartItems.length === 0}
-          >
-            {loading ? "Placing Order..." : "Place Order"}
-          </ProtectedActionButton>
-        </Stack>
-      )}
-
-      <Dialog
-        open={deliveryOpen}
-        onClose={() => setDeliveryOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Delivery details</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Contact name"
-              value={delivery.contactName}
-              onChange={(e) =>
-                setDelivery((prev) => ({
-                  ...prev,
-                  contactName: e.target.value,
-                }))
-              }
-              fullWidth
-            />
-            <TextField
-              label="Phone"
-              value={delivery.deliveryPhone}
-              onChange={(e) =>
-                setDelivery((prev) => ({
-                  ...prev,
-                  deliveryPhone: e.target.value,
-                }))
-              }
-              error={Boolean(deliveryErrors.deliveryPhone)}
-              helperText={deliveryErrors.deliveryPhone}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Delivery address"
-              value={delivery.deliveryAddress}
-              onChange={(e) =>
-                setDelivery((prev) => ({
-                  ...prev,
-                  deliveryAddress: e.target.value,
-                }))
-              }
-              error={Boolean(deliveryErrors.deliveryAddress)}
-              helperText={deliveryErrors.deliveryAddress}
-              required
-              fullWidth
-              multiline
-              minRows={2}
-            />
-            <TextField
-              label="Comment (optional)"
-              value={delivery.commentClient}
-              onChange={(e) =>
-                setDelivery((prev) => ({
-                  ...prev,
-                  commentClient: e.target.value,
-                }))
-              }
-              fullWidth
-              multiline
-              minRows={2}
-            />
+              {loading ? "Placing Order..." : "Place Order"}
+            </ProtectedActionButton>
           </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeliveryOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handlePlaceOrder}
-            disabled={loading || !isDeliveryValid}
-            startIcon={
-              loading ? <CircularProgress color="inherit" size={16} /> : null
-            }
-          >
-            {loading ? "Submitting..." : "Confirm order"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          variant="filled"
+        )}
+
+        <Dialog
+          open={deliveryOpen}
+          onClose={() => setDeliveryOpen(false)}
+          fullWidth
+          maxWidth="sm"
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+          <DialogTitle>Delivery details</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Contact name"
+                value={delivery.contactName}
+                onChange={(e) =>
+                  setDelivery((prev) => ({
+                    ...prev,
+                    contactName: e.target.value,
+                  }))
+                }
+                fullWidth
+              />
+              <TextField
+                label="Phone"
+                value={delivery.deliveryPhone}
+                onChange={(e) =>
+                  setDelivery((prev) => ({
+                    ...prev,
+                    deliveryPhone: e.target.value,
+                  }))
+                }
+                error={Boolean(deliveryErrors.deliveryPhone)}
+                helperText={deliveryErrors.deliveryPhone}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Delivery address"
+                value={delivery.deliveryAddress}
+                onChange={(e) =>
+                  setDelivery((prev) => ({
+                    ...prev,
+                    deliveryAddress: e.target.value,
+                  }))
+                }
+                error={Boolean(deliveryErrors.deliveryAddress)}
+                helperText={deliveryErrors.deliveryAddress}
+                required
+                fullWidth
+                multiline
+                minRows={2}
+              />
+              <TextField
+                label="Comment (optional)"
+                value={delivery.commentClient}
+                onChange={(e) =>
+                  setDelivery((prev) => ({
+                    ...prev,
+                    commentClient: e.target.value,
+                  }))
+                }
+                fullWidth
+                multiline
+                minRows={2}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeliveryOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handlePlaceOrder}
+              disabled={loading || !isDeliveryValid}
+              startIcon={
+                loading ? <CircularProgress color="inherit" size={16} /> : null
+              }
+            >
+              {loading ? "Submitting..." : "Confirm order"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+            severity={snackbar.severity}
+            variant="filled"
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </PageContainer>
   );
 }

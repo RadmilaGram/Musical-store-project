@@ -1,12 +1,6 @@
 // src/App.jsx
 import React, { useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth, useAuthBootstrap } from "./hooks/useAuth";
 import OrdersPage from "./pages/client/OrdersPage";
 import ManagerOrdersPage from "./pages/manager/ManagerOrdersPage";
@@ -23,49 +17,15 @@ import AdminOrders from "./pages/AdminOrders";
 import RegisterPage from "./pages/RegisterPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminCatalogPage from "./pages/AdminCatalogPage";
+import RequireAuth from "./routes/guards/RequireAuth";
+import RequireRole from "./routes/guards/RequireRole";
+import RequireGuest from "./routes/guards/RequireGuest";
 
 // Login popup (MUI + RHF + yup) — смонтируем у корня
 import LoginDialog from "./components/LoginDialog";
 // хук для открытия/закрытия попапа
 import { useLoginModal } from "./hooks/useLoginModal";
-
-// --- role helpers (подправь уровни ролей под свою модель) ---
-const isAdmin = (user) => Number(user?.role) === 1;
-
-// --- Guard: если гость — открыть попап и ничего не рендерить ---
-function RequireAuth({ children }) {
-  const { isLoggedIn } = useAuth();
-  const { open } = useLoginModal();
-
-  useEffect(() => {
-    if (!isLoggedIn) open(); // показали модалку входа
-  }, [isLoggedIn, open]);
-
-  if (!isLoggedIn) return null; // не показываем страницу, пока нет логина
-  return children;
-}
-
-// --- Guard по ролям (включая доступ админа ко всему) ---
-function RequireRole({ children, roles }) {
-  const { isLoggedIn, user } = useAuth();
-  const { open } = useLoginModal();
-
-  useEffect(() => {
-    if (!isLoggedIn) open();
-  }, [isLoggedIn, open]);
-
-  if (!isLoggedIn) return null;
-
-  // админ всегда имеет доступ
-  if (isAdmin(user)) return children;
-
-  // для остальных — проверяем, входит ли в список разрешённых
-  const role = Number(user?.role);
-  if (roles?.includes(role)) return children;
-
-  // нет доступа — на главную
-  return <Navigate to="/" replace />;
-}
 
 // --- Роут, который просто открывает модалку логина и уводит назад после успеха ---
 // (если уже залогинен — редирект на /)
@@ -106,8 +66,22 @@ function App() {
 
       <Routes>
         {/* login как попап */}
-        <Route path="/login" element={<LoginPopupRoute />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/login"
+          element={
+            <RequireGuest>
+              <LoginPopupRoute />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <RequireGuest>
+              <RegisterPage />
+            </RequireGuest>
+          }
+        />
         <Route
           path="/change-password"
           element={
@@ -122,7 +96,14 @@ function App() {
         <Route path="/category/:groupId" element={<CategoryPage />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/trade-in" element={<TradeIn />} />
-        <Route path="/my/orders" element={<OrdersPage />} />
+        <Route
+          path="/my/orders"
+          element={
+            <RequireAuth>
+              <OrdersPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/manager/orders"
           element={
@@ -146,6 +127,14 @@ function App() {
           element={
             <RequireRole roles={[1]}>
               <AdminUsersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/admin/catalog"
+          element={
+            <RequireRole roles={[1]}>
+              <AdminCatalogPage />
             </RequireRole>
           }
         />

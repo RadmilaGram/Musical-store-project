@@ -112,7 +112,7 @@ export default function ProductStatusesSection() {
   const isLoading = status === "loading";
 
   return (
-    <Box sx={{ mb: 4, maxWidth: 900, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <EntityToolbar
         title="Product Statuses"
         searchValue={searchValue}

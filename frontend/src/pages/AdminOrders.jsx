@@ -3,7 +3,6 @@ import {
   Alert,
   Button,
   CircularProgress,
-  Container,
   FormControl,
   IconButton,
   InputLabel,
@@ -27,6 +26,8 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useAdminOrdersList } from "../use-cases/useAdminOrdersList";
 import { useAdminOrderDetails } from "../use-cases/useAdminOrderDetails";
 import AdminOrderDetailsDialog from "./admin/AdminOrderDetailsDialog";
+import PageContainer from "../components/ui/PageContainer";
+import PageTitle from "../components/ui/PageTitle";
 
 export default function AdminOrders() {
   const {
@@ -58,6 +59,15 @@ export default function AdminOrders() {
   } = useAdminOrdersList();
   const orderDetails = useAdminOrderDetails({ onAfterAction: refetch });
   const pageNumber = page.limit ? Math.floor(page.offset / page.limit) : 0;
+  const didSetDefaultLimit = React.useRef(false);
+
+  React.useEffect(() => {
+    if (didSetDefaultLimit.current) return;
+    didSetDefaultLimit.current = true;
+    if (page.limit !== 100) {
+      onRowsPerPageChange(100);
+    }
+  }, [onRowsPerPageChange, page.limit]);
 
   const formatDate = (value) => {
     if (!value) return "-";
@@ -81,10 +91,8 @@ export default function AdminOrders() {
   };
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Admin Orders
-      </Typography>
+    <PageContainer maxWidth="xl">
+      <PageTitle>Orders</PageTitle>
 
       <Stack spacing={2} sx={{ mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -366,6 +374,6 @@ export default function AdminOrders() {
         onUpdateDelivery={orderDetails.doUpdateDelivery}
         onUpdateComment={orderDetails.doUpdateComment}
       />
-    </Container>
+    </PageContainer>
   );
 }

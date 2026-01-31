@@ -7,6 +7,7 @@ import {
   Typography,
   Stack,
   Button,
+  Container,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LoginIcon from "@mui/icons-material/Login";
@@ -23,87 +24,102 @@ export default function Header() {
 
   const role = Number(user?.role); // 🔒 привели к числу 1/2/3/4
 
-  // базовое меню — как у тебя было
-  const basePages = [
+  const navItems = [
     { menuTitle: "Catalog", pageURL: "/" },
-    { menuTitle: "Cart", pageURL: "/Cart" },
-    { menuTitle: "Trade-in", pageURL: "/Trade-in" },
+    { menuTitle: "Trade-in", pageURL: "/trade-in" },
+    { menuTitle: "Cart", pageURL: "/cart" },
   ];
 
   if (user) {
-    basePages.push({ menuTitle: "My orders", pageURL: "/my/orders" });
-    basePages.push({ menuTitle: "Change password", pageURL: "/change-password" });
+    navItems.push({ menuTitle: "My orders", pageURL: "/my/orders" });
+    navItems.push({ menuTitle: "Change password", pageURL: "/change-password" });
   }
 
-  if (!isLoggedIn) {
-    basePages.push({ menuTitle: "Register", pageURL: "/register" });
-  }
-
-  // Admin видит Admin/Manager/Courier; Manager (3) — свою зону; Courier (4) — свою
+  let roleItem = null;
   if (role === 1) {
-    basePages.push({ menuTitle: "Admin", pageURL: "/Admin" });
-    basePages.push({ menuTitle: "Admin Orders", pageURL: "/admin/orders" });
-    basePages.push({ menuTitle: "Admin Users", pageURL: "/admin/users" });
-    basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
-    basePages.push({ menuTitle: "Courier", pageURL: "/courier/orders" });
+    roleItem = { menuTitle: "Admin", pageURL: "/admin" };
   } else if (role === 3) {
-    basePages.push({ menuTitle: "Manager", pageURL: "/manager/orders" });
+    roleItem = { menuTitle: "Manager", pageURL: "/manager/orders" };
   } else if (role === 4) {
-    basePages.push({ menuTitle: "Courier", pageURL: "/courier/orders" });
+    roleItem = { menuTitle: "Courier", pageURL: "/courier/orders" };
+  }
+
+  if (roleItem) {
+    navItems.push(roleItem);
   }
 
   const handleLogin = () => open();
   const handleLogout = () => logout();
 
   return (
-    <AppBar position="static" className="headerLine">
+    <AppBar
+      position="sticky"
+      className="headerLine"
+      sx={{ top: 0, zIndex: (theme) => theme.zIndex.appBar }}
+    >
       <Toolbar>
-        <IconButton
-          component={Link}
-          to="/"
-          size="large"
-          edge="start"
-          aria-label="home link"
-          color="inherit"
+        <Container
+          maxWidth="xl"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
         >
-          <img src={logo} className="logo" alt="logo" />
-        </IconButton>
+          <IconButton
+            component={Link}
+            to="/"
+            size="large"
+            edge="start"
+            aria-label="home link"
+            color="inherit"
+          >
+            <img src={logo} className="logo" alt="logo" />
+          </IconButton>
 
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Music Way
-        </Typography>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Music Way
+          </Typography>
 
-        <Stack direction="row" spacing={2} alignItems="center">
-          {basePages.map(({ menuTitle, pageURL }, idx) => (
-            <Button
-              key={idx}
-              component={Link}
-              to={pageURL}
-              variant="text"
-              color="inherit"
-            >
-              {menuTitle}
-            </Button>
-          ))}
+          <Stack direction="row" spacing={2} alignItems="center">
+            {navItems.map(({ menuTitle, pageURL }, idx) => (
+              <Button
+                key={idx}
+                component={Link}
+                to={pageURL}
+                variant="text"
+                color="inherit"
+              >
+                {menuTitle}
+              </Button>
+            ))}
+          </Stack>
 
-          {isLoggedIn ? (
-            <Button
-              startIcon={<LogoutIcon />}
-              color="inherit"
-              onClick={handleLogout}
-            >
-              Logout
-            </Button>
-          ) : (
-            <Button
-              startIcon={<LoginIcon />}
-              color="inherit"
-              onClick={handleLogin}
-            >
-              Log in
-            </Button>
-          )}
-        </Stack>
+          <Stack direction="row" spacing={2} alignItems="center">
+            {isLoggedIn ? (
+              <Button
+                startIcon={<LogoutIcon />}
+                color="inherit"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            ) : (
+              <>
+                <Button component={Link} to="/register" color="inherit">
+                  Register
+                </Button>
+                <Button
+                  startIcon={<LoginIcon />}
+                  color="inherit"
+                  onClick={handleLogin}
+                >
+                  Log in
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Container>
       </Toolbar>
     </AppBar>
   );

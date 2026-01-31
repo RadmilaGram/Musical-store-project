@@ -2,17 +2,17 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
-  Box,
   Button,
   IconButton,
   InputAdornment,
-  Paper,
   TextField,
-  Typography,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useChangePassword } from "../hooks/useChangePassword";
 import { useChangePasswordForm } from "../forms/auth/useChangePasswordForm";
+import PageContainer from "../components/ui/PageContainer";
+import PageTitle from "../components/ui/PageTitle";
+import FormLayout from "../components/ui/FormLayout";
 
 export default function ChangePasswordPage() {
   const changePassword = useChangePassword();
@@ -40,16 +40,14 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <Paper elevation={3} sx={{ maxWidth: 520, mx: "auto", mt: 8, p: 4 }}>
-      <Typography variant="h5" component="h1" gutterBottom>
-        Change password
-      </Typography>
-      {errors.root?.message && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {errors.root.message}
-        </Alert>
-      )}
-      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+    <PageContainer>
+      <FormLayout onSubmit={handleSubmit(onSubmit)} sx={{ mt: 8 }}>
+        <PageTitle>Change Password</PageTitle>
+        {errors.root?.message && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errors.root.message}
+          </Alert>
+        )}
         <TextField
           label="Current password"
           type={showCurrent ? "text" : "password"}
@@ -96,7 +94,7 @@ export default function ChangePasswordPage() {
         >
           Change password
         </Button>
-      </Box>
-    </Paper>
+      </FormLayout>
+    </PageContainer>
   );
 }

@@ -1,5 +1,8 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 const createRequireAuth = require("../middlewares/requireAuth");
+
+const SALT_ROUNDS = 12;
 
 function parseId(value, fieldName) {
   const parsed = Number(value);
@@ -28,6 +31,26 @@ function createAdminUsersRouter(db) {
       db.query(sql, params, (err, results) => {
         if (err) return reject(err);
         resolve(results);
+      });
+    });
+
+  const begin = () =>
+    new Promise((resolve, reject) => {
+      db.beginTransaction((err) => (err ? reject(err) : resolve()));
+    });
+
+  const rollback = () =>
+    new Promise((resolve) => {
+      db.rollback(() => resolve());
+    });
+
+  const commit = () =>
+    new Promise((resolve, reject) => {
+      db.commit((err) => {
+        if (err) {
+          return db.rollback(() => reject(err));
+        }
+        resolve();
       });
     });
 
@@ -73,6 +96,94 @@ function createAdminUsersRouter(db) {
       return res
         .status(500)
         .json({ ok: false, message: "Failed to fetch users" });
+    }
+  });
+
+  router.post("/users", requireAuth, async (req, res) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
+    const fullNameRaw = req.body?.full_name ?? req.body?.name;
+    const emailRaw = req.body?.email;
+    const phoneRaw = req.body?.phone;
+    const addressRaw = req.body?.address;
+    const passwordRaw = req.body?.password;
+
+    const full_name =
+      typeof fullNameRaw === "string" ? fullNameRaw.trim() : "";
+    const email = typeof emailRaw === "string" ? emailRaw.trim() : "";
+    const phone = typeof phoneRaw === "string" ? phoneRaw.trim() : "";
+    const address = typeof addressRaw === "string" ? addressRaw.trim() : "";
+    const password = typeof passwordRaw === "string" ? passwordRaw : "";
+
+    if (!full_name || !email || !phone || !address || !password) {
+      return res
+        .status(400)
+        .json({ ok: false, message: "Missing required fields" });
+    }
+
+    try {
+      await begin();
+
+      const existingRows = await query(
+        "SELECT id FROM users WHERE email = ? LIMIT 1",
+        [email]
+      );
+      if (existingRows.length > 0) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Email already in use" });
+      }
+
+      const roleRows = await query(
+        "SELECT id, role FROM user_role WHERE role = ? LIMIT 1",
+        ["courier"]
+      );
+      const roleRow = roleRows?.[0];
+      if (!roleRow || !staffRoles.includes(roleRow.role)) {
+        await rollback();
+        return res
+          .status(500)
+          .json({ ok: false, message: "Staff role not found" });
+      }
+
+      const idRows = await query("SELECT MAX(id) AS maxId FROM users FOR UPDATE");
+      const nextId = Number(idRows?.[0]?.maxId ?? 0) + 1;
+
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+      await query(
+        "INSERT INTO users (id, full_name, email, phone, password, address, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [nextId, full_name, email, phone, passwordHash, address, roleRow.id, 1]
+      );
+
+      await commit();
+
+      return res.status(201).json({
+        user: {
+          id: nextId,
+          full_name,
+          email,
+          phone,
+          address,
+          role: roleRow.id,
+          is_active: 1,
+          role_name: roleRow.role,
+        },
+      });
+    } catch (err) {
+      await rollback();
+      if (err?.code === "ER_DUP_ENTRY") {
+        return res
+          .status(409)
+          .json({ ok: false, message: "Email already in use" });
+      }
+      console.error("Failed to create staff user:", err);
+      return res
+        .status(500)
+        .json({ ok: false, message: "Failed to create staff user" });
     }
   });
 

@@ -203,7 +203,7 @@ export default function SpecialFieldsSection() {
   }, [selectedTypeId, loadAssignedFields, reload]);
 
   return (
-    <Box sx={{ mb: 4, maxWidth: 900, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <EntityToolbar
         title="Special Fields"
         searchValue={searchValue}

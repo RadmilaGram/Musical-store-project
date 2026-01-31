@@ -3,14 +3,14 @@ import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import {
-  Box,
   Button,
   TextField,
-  Typography,
   Alert,
-  Paper,
 } from "@mui/material";
 import { useLogin } from "../hooks/useAuth";
+import PageContainer from "../components/ui/PageContainer";
+import PageTitle from "../components/ui/PageTitle";
+import FormLayout from "../components/ui/FormLayout";
 
 const schema = yup.object().shape({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -37,16 +37,14 @@ export default function LoginPage() {
   };
 
   return (
-    <Paper elevation={3} sx={{ maxWidth: 400, mx: "auto", mt: 8, p: 4 }}>
-      <Typography variant="h5" component="h1" gutterBottom>
-        Log in
-      </Typography>
-      {errorMsg && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {errorMsg}
-        </Alert>
-      )}
-      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+    <PageContainer>
+      <FormLayout onSubmit={handleSubmit(onSubmit)} sx={{ mt: 8 }}>
+        <PageTitle>Log in</PageTitle>
+        {errorMsg && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errorMsg}
+          </Alert>
+        )}
         <Controller
           name="email"
           control={control}
@@ -55,6 +53,7 @@ export default function LoginPage() {
             <TextField
               {...field}
               label="Email"
+              inputProps={{ autoComplete: "email" }}
               fullWidth
               margin="normal"
               error={!!errors.email}
@@ -71,6 +70,7 @@ export default function LoginPage() {
               {...field}
               label="Password"
               type="password"
+              inputProps={{ autoComplete: "current-password" }}
               fullWidth
               margin="normal"
               error={!!errors.password}
@@ -89,7 +89,7 @@ export default function LoginPage() {
           {/* {loading ? "Loging In..." : "Log in"} */}
           Log in
         </Button>
-      </Box>
-    </Paper>
+      </FormLayout>
+    </PageContainer>
   );
 }

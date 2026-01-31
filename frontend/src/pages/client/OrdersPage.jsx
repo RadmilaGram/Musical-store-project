@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import {
-  Container,
   Typography,
   TableContainer,
   Paper,
@@ -22,6 +21,8 @@ import {
 import { cancelMyOrder } from "../../api/orders.api";
 import { useMyOrders } from "../../use-cases/useMyOrders";
 import OrderDetailsDialog from "./OrderDetailsDialog";
+import PageContainer from "../../components/ui/PageContainer";
+import PageTitle from "../../components/ui/PageTitle";
 
 export default function OrdersPage() {
   const {
@@ -103,10 +104,8 @@ export default function OrdersPage() {
   }, [loadMyOrders]);
 
   return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        My Orders
-      </Typography>
+    <PageContainer maxWidth="lg">
+      <PageTitle>My Orders</PageTitle>
 
       {loading && (
         <Stack alignItems="center" sx={{ py: 4 }}>
@@ -224,6 +223,6 @@ export default function OrdersPage() {
         onCancelOrder={handleCancelOrder}
         orderId={openedOrderId}
       />
-    </Container>
+    </PageContainer>
   );
 }

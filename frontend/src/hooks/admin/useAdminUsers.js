@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getAdminUsers,
+  createStaffUser,
   updateAdminUserActive,
   updateAdminUserRole,
 } from "../../api/adminUsers.api";
@@ -20,6 +21,8 @@ export function useAdminUsers() {
   const [error, setError] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState(null);
   const [roleDrafts, setRoleDrafts] = useState({});
   const [activeDrafts, setActiveDrafts] = useState({});
 
@@ -122,6 +125,28 @@ export function useAdminUsers() {
     [activeDrafts, roleDrafts, savingId, users]
   );
 
+  const clearCreateError = useCallback(() => {
+    setCreateError(null);
+  }, []);
+
+  const createStaff = useCallback(
+    async (payload) => {
+      setCreateLoading(true);
+      setCreateError(null);
+      try {
+        const response = await createStaffUser(payload);
+        await loadUsers();
+        return response;
+      } catch (err) {
+        setCreateError(err);
+        throw err;
+      } finally {
+        setCreateLoading(false);
+      }
+    },
+    [loadUsers]
+  );
+
   return {
     users,
     loading,
@@ -132,10 +157,14 @@ export function useAdminUsers() {
     currentUserId,
     savingId,
     saveError,
+    createLoading,
+    createError,
     loadUsers,
     setRoleDraft,
     setActiveDraft,
     saveChanges,
+    createStaff,
+    clearCreateError,
   };
 }
 

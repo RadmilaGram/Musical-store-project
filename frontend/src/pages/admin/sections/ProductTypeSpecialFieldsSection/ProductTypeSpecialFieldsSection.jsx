@@ -161,7 +161,7 @@ export default function ProductTypeSpecialFieldsSection() {
   );
 
   return (
-    <Box sx={{ mb: 4, maxWidth: 900, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <EntityToolbar
         title="Product Type Fields"
         searchValue={searchValue}

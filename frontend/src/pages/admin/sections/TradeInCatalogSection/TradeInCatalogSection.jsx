@@ -247,7 +247,7 @@ export default function TradeInCatalogSection() {
   );
 
   return (
-    <Box sx={{ mb: 4, maxWidth: 1100, mx: "auto" }}>
+    <Box sx={{ width: "100%" }}>
       <EntityToolbar
         title="Trade-in Catalog"
         searchValue={searchValue}

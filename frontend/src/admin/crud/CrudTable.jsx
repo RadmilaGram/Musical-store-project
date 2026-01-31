@@ -6,16 +6,24 @@ export default function CrudTable({
   rows,
   columns,
   loading,
+  autoHeight = false,
+  containerSx,
   ...rest
 }) {
   return (
-    <Box sx={{ width: "100%", height: 520 }}>
+    <Box
+      sx={{
+        width: "100%",
+        height: autoHeight ? "auto" : 520,
+        ...containerSx,
+      }}
+    >
       <DataGrid
         rows={rows}
         columns={columns}
         loading={loading}
         disableRowSelectionOnClick
-        autoHeight={false}
+        autoHeight={autoHeight}
         {...rest}
       />
     </Box>

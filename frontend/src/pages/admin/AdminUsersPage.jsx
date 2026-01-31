@@ -1,19 +1,20 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
-  Container,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   Switch,
-  Typography,
 } from "@mui/material";
 import CrudTable from "../../admin/crud/CrudTable";
 import { useAdminUsers } from "../../hooks/admin/useAdminUsers";
+import CreateStaffUserDialog from "../../components/forms/CreateStaffUserDialog";
+import PageContainer from "../../components/ui/PageContainer";
+import PageTitle from "../../components/ui/PageTitle";
 
 export default function AdminUsersPage() {
   const {
@@ -26,11 +27,16 @@ export default function AdminUsersPage() {
     currentUserId,
     savingId,
     saveError,
+    createLoading,
+    createError,
     loadUsers,
     setRoleDraft,
     setActiveDraft,
     saveChanges,
+    createStaff,
+    clearCreateError,
   } = useAdminUsers();
+  const [isCreateOpen, setCreateOpen] = useState(false);
 
   const staffRoleIds = useMemo(
     () => new Set(roleOptions.map((role) => role.id)),
@@ -150,8 +156,15 @@ export default function AdminUsersPage() {
     ]
   );
 
+  const handleOpenCreate = () => {
+    clearCreateError();
+    setCreateOpen(true);
+  };
+
+  const handleCloseCreate = () => setCreateOpen(false);
+
   return (
-    <Container sx={{ py: 4 }}>
+    <PageContainer maxWidth="xl">
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
@@ -159,14 +172,19 @@ export default function AdminUsersPage() {
         justifyContent="space-between"
         sx={{ mb: 2 }}
       >
-        <Typography variant="h5">Admin Users</Typography>
-        <Button
-          variant="outlined"
-          onClick={() => loadUsers()}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
+        <PageTitle>Users</PageTitle>
+        <Stack direction="row" spacing={1}>
+          <Button variant="contained" onClick={handleOpenCreate}>
+            Create staff
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => loadUsers()}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        </Stack>
       </Stack>
 
       {error && (
@@ -180,12 +198,17 @@ export default function AdminUsersPage() {
         </Alert>
       )}
 
-      <Box sx={{ maxWidth: 1100, mx: "auto" }}>
+      <Box>
         <CrudTable
           rows={staffRows}
           columns={columns}
           loading={loading}
+          autoHeight
           rowHeight={52}
+          pageSizeOptions={[20, 50, 100]}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 20, page: 0 } },
+          }}
           getRowClassName={(params) =>
             params.row?.is_active ? "" : "admin-users-row--inactive"
           }
@@ -200,6 +223,13 @@ export default function AdminUsersPage() {
           }}
         />
       </Box>
-    </Container>
+      <CreateStaffUserDialog
+        open={isCreateOpen}
+        onClose={handleCloseCreate}
+        onCreate={createStaff}
+        loading={createLoading}
+        error={createError}
+      />
+    </PageContainer>
   );
 }
