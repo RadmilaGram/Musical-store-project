@@ -51,12 +51,13 @@ export async function takeOrder(orderId) {
   return data;
 }
 
-export async function markReady(orderId) {
+export async function markReady(orderId, payload) {
   if (!orderId) {
     return null;
   }
   const { data } = await apiClient.post(
-    `/api/orders/${orderId}/manager/mark-ready`
+    `/api/orders/${orderId}/manager/mark-ready`,
+    payload
   );
   return data;
 }

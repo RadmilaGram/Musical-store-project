@@ -656,6 +656,10 @@ function createOrdersRouter(db) {
       return res.status(400).json({ ok: false, message: "Invalid orderId" });
     }
 
+    const noteRaw = req.body?.note;
+    const note =
+      typeof noteRaw === "string" ? noteRaw.trim() : null;
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -739,8 +743,14 @@ function createOrdersRouter(db) {
         orderId,
       ]);
       await query(
-        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, NULL)",
-        [orderId, preparingStatusId, readyStatusId, req.user?.id]
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [
+          orderId,
+          preparingStatusId,
+          readyStatusId,
+          req.user?.id,
+          note || null,
+        ]
       );
 
       await commit();
@@ -1000,6 +1010,10 @@ function createOrdersRouter(db) {
       return res.status(400).json({ ok: false, message: "Invalid orderId" });
     }
 
+    const noteRaw = req.body?.note;
+    const note =
+      typeof noteRaw === "string" ? noteRaw.trim() : null;
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -1079,8 +1093,14 @@ function createOrdersRouter(db) {
         [orderId, req.user?.id]
       );
       await query(
-        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, NULL)",
-        [orderId, deliveringStatusId, finishedStatusId, req.user?.id]
+        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+        [
+          orderId,
+          deliveringStatusId,
+          finishedStatusId,
+          req.user?.id,
+          note || null,
+        ]
       );
 
       await commit();

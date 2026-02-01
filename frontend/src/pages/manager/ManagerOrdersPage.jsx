@@ -4,6 +4,10 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -62,6 +66,9 @@ export default function ManagerOrdersPage() {
   const [historyOrderId, setHistoryOrderId] = useState(null);
   const [isCancelOpen, setCancelOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState(null);
+  const [isMarkReadyOpen, setMarkReadyOpen] = useState(false);
+  const [markReadyOrderId, setMarkReadyOrderId] = useState(null);
+  const [markReadyNote, setMarkReadyNote] = useState("");
 
   useEffect(() => {
     refreshAll().catch(() => {});
@@ -111,6 +118,7 @@ export default function ManagerOrdersPage() {
   const handleOpenDetails = (orderId) => {
     setOpenedOrderId(orderId);
     loadDetails(orderId).catch(() => {});
+    loadHistory(orderId).catch(() => {});
     setDialogOpen(true);
   };
 
@@ -145,7 +153,21 @@ export default function ManagerOrdersPage() {
   };
 
   const handleMarkReady = async (orderId) => {
-    await markReady(orderId);
+    setMarkReadyOrderId(orderId);
+    setMarkReadyNote("");
+    setMarkReadyOpen(true);
+  };
+
+  const handleConfirmMarkReady = async () => {
+    if (!markReadyOrderId) {
+      return;
+    }
+    const trimmedNote = markReadyNote.trim();
+    const payload = trimmedNote ? { note: trimmedNote } : {};
+    await markReady(markReadyOrderId, payload);
+    setMarkReadyOpen(false);
+    setMarkReadyOrderId(null);
+    setMarkReadyNote("");
   };
 
   const statusValue = String(details?.order?.status || "").toLowerCase();
@@ -363,6 +385,7 @@ export default function ManagerOrdersPage() {
         loading={detailsLoading}
         error={detailsError}
         details={details}
+        historyNotes={history}
         onCancelOrder={null}
         orderId={openedOrderId}
         hideCancel
@@ -399,6 +422,42 @@ export default function ManagerOrdersPage() {
         history={history}
         orderId={historyOrderId}
       />
+      <Dialog
+        open={isMarkReadyOpen}
+        onClose={() => {
+          setMarkReadyOpen(false);
+          setMarkReadyOrderId(null);
+          setMarkReadyNote("");
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Mark order ready</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            label="Note (optional)"
+            value={markReadyNote}
+            onChange={(event) => setMarkReadyNote(event.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setMarkReadyOpen(false);
+              setMarkReadyOrderId(null);
+              setMarkReadyNote("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleConfirmMarkReady}>
+            Mark Ready
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

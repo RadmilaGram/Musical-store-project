@@ -29,6 +29,7 @@ export default function OrderDetailsDialog({
   orderId,
   hideCancel = false,
   extraActions = null,
+  historyNotes = null,
 }) {
   const order = details?.order;
   const items = details?.items || [];
@@ -44,6 +45,32 @@ export default function OrderDetailsDialog({
     if (typeof value === "string" && value.trim() === "") return "—";
     return value;
   };
+  const formatAuthor = (row) => {
+    if (row?.changed_by) {
+      if (row.changed_by.full_name && row.changed_by.email) {
+        return `${row.changed_by.full_name} (${row.changed_by.email})`;
+      }
+      return row.changed_by.full_name || row.changed_by.email || "—";
+    }
+    return row?.changedBy || row?.changed_by || "—";
+  };
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+  const noteItems = Array.isArray(historyNotes)
+    ? historyNotes.filter(
+        (row) => typeof row.note === "string" && row.note.trim() !== ""
+      )
+    : [];
 
   const handleCancel = async () => {
     if (!orderId || !onCancelOrder || cancelLoading) return;
@@ -129,6 +156,25 @@ export default function OrderDetailsDialog({
                 <Typography>
                   Internal comment: {displayValue(order.comment_internal)}
                 </Typography>
+              </Stack>
+            )}
+
+            {noteItems.length > 0 && (
+              <Stack spacing={1}>
+                <Typography variant="h6">Notes</Typography>
+                {noteItems.map((row, index) => {
+                  const author = formatAuthor(row);
+                  const authorLabel = author === "—" ? "System" : author;
+                  const changedAt = row.changed_at || row.changedAt;
+                  return (
+                    <Stack key={`note-${row.id ?? index}`} spacing={0.5}>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(changedAt)} • {authorLabel}
+                      </Typography>
+                      <Typography>{row.note}</Typography>
+                    </Stack>
+                  );
+                })}
               </Stack>
             )}
 

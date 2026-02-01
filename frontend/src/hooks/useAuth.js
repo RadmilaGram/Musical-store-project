@@ -11,6 +11,7 @@ import {
   logout as logoutAction,
 } from "../store/authSlice";
 import { resetTradeIn } from "../store/tradeInSlice";
+import { clearCart } from "../store/cartSlice";
 import { closeLogin } from "../store/uiSlice";
 
 /**
@@ -71,16 +72,28 @@ export function useLogout() {
     try {
       await logoutUser();
     } catch {}
+    localStorage.removeItem("token");
     dispatch(logoutAction());
     dispatch(resetTradeIn());
+    dispatch(clearCart());
     window.location.replace("/");
   };
 }
 
 export function useAuthBootstrap() {
   const dispatch = useDispatch();
+  const { user, token, isLoggedIn: isLoggedInFromState } = useSelector(
+    (state) => state.auth || {}
+  );
+  const isLoggedIn =
+    typeof isLoggedInFromState === "boolean"
+      ? isLoggedInFromState
+      : Boolean(user?.id ?? user ?? token);
 
   return async function bootstrapAuth() {
+    if (!isLoggedIn) {
+      return;
+    }
     try {
       const data = await getMe();
       dispatch(authSuccess({ user: data?.user || null }));

@@ -792,7 +792,7 @@ function createOrdersAdminRouter(db) {
         .json({ ok: false, message: "Invalid comment_internal" });
     }
 
-    const note = "Updated internal comment";
+    const trimmedNote = commentInternal.trim();
 
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
@@ -839,10 +839,12 @@ function createOrdersAdminRouter(db) {
         commentInternal,
         orderId,
       ]);
-      await query(
-        "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
-        [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, note]
-      );
+      if (trimmedNote) {
+        await query(
+          "INSERT INTO order_status_history (order_id, oldStatusId, newStatusId, changed_by, note) VALUES (?, ?, ?, ?, ?)",
+          [orderId, orderRow.statusId, orderRow.statusId, req.user?.id, trimmedNote]
+        );
+      }
 
       await commit();
       return res.json({ ok: true, orderId });

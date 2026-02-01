@@ -97,14 +97,14 @@ export function useManagerOrders() {
   );
 
   const markReadyOrder = useCallback(
-    async (orderId) => {
+    async (orderId, note) => {
       if (!orderId) {
         return null;
       }
       setLoading(true);
       setError(null);
       try {
-        await markReady(orderId);
+        await markReady(orderId, note);
         return await fetchBoth();
       } catch (err) {
         setError(err);

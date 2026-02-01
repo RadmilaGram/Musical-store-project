@@ -94,14 +94,14 @@ export function useCourierOrders() {
   );
 
   const finishOrder = useCallback(
-    async (orderId) => {
+    async (orderId, note) => {
       if (!orderId) {
         return null;
       }
       setLoading(true);
       setError(null);
       try {
-        const data = await finishCourierOrder(orderId);
+        const data = await finishCourierOrder(orderId, note);
         await loadMy();
         return data;
       } catch (err) {

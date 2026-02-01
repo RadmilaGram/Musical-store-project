@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -61,6 +61,8 @@ export default function AdminOrderDetailsDialog({
   const [commentInternal, setCommentInternal] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [actionsExpanded, setActionsExpanded] = useState(false);
+  const lastHistoryOrderId = useRef(null);
 
   const order = details?.order || null;
   const client = details?.client || null;
@@ -98,6 +100,8 @@ export default function AdminOrderDetailsDialog({
       setCommentInternal("");
       setCancelReason("");
       setHistoryExpanded(false);
+      setActionsExpanded(false);
+      lastHistoryOrderId.current = null;
       return;
     }
 
@@ -111,6 +115,17 @@ export default function AdminOrderDetailsDialog({
     setDeliveryPhone(delivery.delivery_phone ?? "");
     setCommentInternal(details?.comments?.comment_internal ?? "");
   }, [open, order, assignedManager, assignedCourier, delivery, details]);
+
+  useEffect(() => {
+    if (!open || !orderId || !onFetchHistory) {
+      return;
+    }
+    if (lastHistoryOrderId.current === orderId) {
+      return;
+    }
+    lastHistoryOrderId.current = orderId;
+    onFetchHistory();
+  }, [open, orderId, onFetchHistory]);
 
   const formatUser = (user) => {
     if (!user) return "—";
@@ -134,12 +149,23 @@ export default function AdminOrderDetailsDialog({
   };
 
   const historyItems = useMemo(() => history || [], [history]);
+  const noteItems = useMemo(
+    () =>
+      historyItems.filter(
+        (row) => typeof row.note === "string" && row.note.trim() !== ""
+      ),
+    [historyItems]
+  );
 
   const handleHistoryToggle = (_, expanded) => {
     setHistoryExpanded(expanded);
     if (expanded && onFetchHistory) {
       onFetchHistory();
     }
+  };
+
+  const handleActionsToggle = (_, expanded) => {
+    setActionsExpanded(expanded);
   };
 
   const handleStatusChange = async () => {
@@ -229,187 +255,26 @@ export default function AdminOrderDetailsDialog({
 
             <Divider />
 
-            <Stack spacing={2}>
-              <Typography variant="h6">Assignments</Typography>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <Stack spacing={1} sx={{ flex: 1 }}>
-                  <Typography>Manager: {formatUser(assignedManager)}</Typography>
-                  <FormControl size="small">
-                    <InputLabel id="admin-order-manager-select">
-                      Manager
-                    </InputLabel>
-                    <Select
-                      labelId="admin-order-manager-select"
-                      label="Manager"
-                      value={managerId}
-                      onChange={(event) => setManagerId(event.target.value)}
-                      disabled={actionLoading?.assignManager}
-                    >
-                      <MenuItem value="">Select manager</MenuItem>
-                      {managers.map((manager) => (
-                        <MenuItem key={manager.id} value={manager.id}>
-                          {manager.full_name} ({manager.email})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={handleAssignManager}
-                      disabled={!managerId || actionLoading?.assignManager}
-                      startIcon={
-                        actionLoading?.assignManager ? (
-                          <CircularProgress size={16} />
-                        ) : null
-                      }
-                    >
-                      Assign
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleUnassignManager}
-                      disabled={!assignedManager || actionLoading?.unassignManager}
-                      startIcon={
-                        actionLoading?.unassignManager ? (
-                          <CircularProgress size={16} />
-                        ) : null
-                      }
-                    >
-                      Unassign
-                    </Button>
-                  </Stack>
-                </Stack>
-
-                <Stack spacing={1} sx={{ flex: 1 }}>
-                  <Typography>Courier: {formatUser(assignedCourier)}</Typography>
-                  <FormControl size="small">
-                    <InputLabel id="admin-order-courier-select">
-                      Courier
-                    </InputLabel>
-                    <Select
-                      labelId="admin-order-courier-select"
-                      label="Courier"
-                      value={courierId}
-                      onChange={(event) => setCourierId(event.target.value)}
-                      disabled={actionLoading?.assignCourier}
-                    >
-                      <MenuItem value="">Select courier</MenuItem>
-                      {couriers.map((courier) => (
-                        <MenuItem key={courier.id} value={courier.id}>
-                          {courier.full_name} ({courier.email})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={handleAssignCourier}
-                      disabled={!courierId || actionLoading?.assignCourier}
-                      startIcon={
-                        actionLoading?.assignCourier ? (
-                          <CircularProgress size={16} />
-                        ) : null
-                      }
-                    >
-                      Assign
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={handleUnassignCourier}
-                      disabled={!assignedCourier || actionLoading?.unassignCourier}
-                      startIcon={
-                        actionLoading?.unassignCourier ? (
-                          <CircularProgress size={16} />
-                        ) : null
-                      }
-                    >
-                      Unassign
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Stack>
-            </Stack>
-
-            <Divider />
-
-            <Stack spacing={2}>
-              <Typography variant="h6">Status</Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel id="admin-order-status-select">Status</InputLabel>
-                  <Select
-                    labelId="admin-order-status-select"
-                    label="Status"
-                    value={statusId}
-                    onChange={(event) => setStatusId(event.target.value)}
-                    disabled={actionLoading?.status}
-                  >
-                    {statuses.map((status) => (
-                      <MenuItem key={status.id} value={status.id}>
-                        {status.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField
-                  size="small"
-                  label="Note (optional)"
-                  value={statusNote}
-                  onChange={(event) => setStatusNote(event.target.value)}
-                  fullWidth
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleStatusChange}
-                  disabled={!statusId || actionLoading?.status}
-                  startIcon={
-                    actionLoading?.status ? (
-                      <CircularProgress size={16} />
-                    ) : null
-                  }
-                >
-                  Change
-                </Button>
-              </Stack>
-            </Stack>
-
-            <Divider />
-
-            <Stack spacing={2}>
-              <Typography variant="h6">Delivery</Typography>
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <TextField
-                  size="small"
-                  label="Contact name"
-                  value={deliveryContact}
-                  onChange={(event) => setDeliveryContact(event.target.value)}
-                />
-                <TextField
-                  size="small"
-                  label="Phone"
-                  value={deliveryPhone}
-                  onChange={(event) => setDeliveryPhone(event.target.value)}
-                />
-              </Stack>
-              <TextField
-                size="small"
-                label="Address"
-                value={deliveryAddress}
-                onChange={(event) => setDeliveryAddress(event.target.value)}
-                fullWidth
-              />
-              <Button
-                variant="contained"
-                onClick={handleSaveDelivery}
-                disabled={actionLoading?.delivery}
-                startIcon={
-                  actionLoading?.delivery ? <CircularProgress size={16} /> : null
-                }
-              >
-                Save delivery
-              </Button>
+            <Stack spacing={1}>
+              <Typography variant="h6">Notes</Typography>
+              {noteItems.length === 0 ? (
+                <Typography>No notes</Typography>
+              ) : (
+                noteItems.map((row) => {
+                  const author = formatUser(row.changed_by);
+                  const authorLabel = author === "—" ? "System" : author;
+                  return (
+                    <Paper variant="outlined" key={`note-${row.id}`}>
+                      <Stack spacing={0.5} sx={{ p: 1.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDate(row.changed_at)} • {authorLabel}
+                        </Typography>
+                        <Typography>{row.note}</Typography>
+                      </Stack>
+                    </Paper>
+                  );
+                })
+              )}
             </Stack>
 
             <Divider />
@@ -421,7 +286,9 @@ export default function AdminOrderDetailsDialog({
                 multiline
                 minRows={2}
                 value={commentInternal}
-                onChange={(event) => setCommentInternal(event.target.value)}
+                onChange={(event) =>
+                  setCommentInternal(event.target.value)
+                }
                 fullWidth
               />
               <Button
@@ -429,7 +296,9 @@ export default function AdminOrderDetailsDialog({
                 onClick={handleSaveComment}
                 disabled={actionLoading?.comment}
                 startIcon={
-                  actionLoading?.comment ? <CircularProgress size={16} /> : null
+                  actionLoading?.comment ? (
+                    <CircularProgress size={16} />
+                  ) : null
                 }
               >
                 Save comment
@@ -438,29 +307,286 @@ export default function AdminOrderDetailsDialog({
 
             <Divider />
 
-            <Stack spacing={2}>
-              <Typography variant="h6">Cancel order</Typography>
-              <TextField
-                size="small"
-                label="Reason"
-                value={cancelReason}
-                onChange={(event) => setCancelReason(event.target.value)}
-                fullWidth
-                multiline
-                minRows={2}
-              />
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleCancelOrder}
-                disabled={!cancelReason || actionLoading?.cancel}
-                startIcon={
-                  actionLoading?.cancel ? <CircularProgress size={16} /> : null
-                }
-              >
-                Cancel order
-              </Button>
-            </Stack>
+            <Accordion expanded={historyExpanded} onChange={handleHistoryToggle}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>History</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {historyLoading && (
+                  <Stack alignItems="center" sx={{ py: 2 }}>
+                    <CircularProgress size={20} />
+                  </Stack>
+                )}
+                {historyError && !historyLoading && (
+                  <Alert severity="error">Failed to load history.</Alert>
+                )}
+                {!historyLoading && !historyError && historyItems.length === 0 && (
+                  <Typography>No history entries</Typography>
+                )}
+                {!historyLoading && !historyError && historyItems.length > 0 && (
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Changed at</TableCell>
+                          <TableCell>From</TableCell>
+                          <TableCell>To</TableCell>
+                          <TableCell>By</TableCell>
+                          <TableCell>Note</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {historyItems.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>{formatDate(row.changed_at)}</TableCell>
+                            <TableCell>{row.oldStatusName || "—"}</TableCell>
+                            <TableCell>{row.newStatusName || "—"}</TableCell>
+                            <TableCell>{formatUser(row.changed_by)}</TableCell>
+                            <TableCell>{row.note || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </AccordionDetails>
+            </Accordion>
+
+            <Divider />
+
+            <Accordion expanded={actionsExpanded} onChange={handleActionsToggle}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>Actions</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={3}>
+                  <Stack spacing={2}>
+                    <Typography variant="h6">Assignments</Typography>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                      <Stack spacing={1} sx={{ flex: 1 }}>
+                        <Typography>
+                          Manager: {formatUser(assignedManager)}
+                        </Typography>
+                        <FormControl size="small">
+                          <InputLabel id="admin-order-manager-select">
+                            Manager
+                          </InputLabel>
+                          <Select
+                            labelId="admin-order-manager-select"
+                            label="Manager"
+                            value={managerId}
+                            onChange={(event) => setManagerId(event.target.value)}
+                            disabled={actionLoading?.assignManager}
+                          >
+                            <MenuItem value="">Select manager</MenuItem>
+                            {managers.map((manager) => (
+                              <MenuItem key={manager.id} value={manager.id}>
+                                {manager.full_name} ({manager.email})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="contained"
+                            onClick={handleAssignManager}
+                            disabled={!managerId || actionLoading?.assignManager}
+                            startIcon={
+                              actionLoading?.assignManager ? (
+                                <CircularProgress size={16} />
+                              ) : null
+                            }
+                          >
+                            Assign
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={handleUnassignManager}
+                            disabled={
+                              !assignedManager ||
+                              actionLoading?.unassignManager
+                            }
+                            startIcon={
+                              actionLoading?.unassignManager ? (
+                                <CircularProgress size={16} />
+                              ) : null
+                            }
+                          >
+                            Unassign
+                          </Button>
+                        </Stack>
+                      </Stack>
+
+                      <Stack spacing={1} sx={{ flex: 1 }}>
+                        <Typography>
+                          Courier: {formatUser(assignedCourier)}
+                        </Typography>
+                        <FormControl size="small">
+                          <InputLabel id="admin-order-courier-select">
+                            Courier
+                          </InputLabel>
+                          <Select
+                            labelId="admin-order-courier-select"
+                            label="Courier"
+                            value={courierId}
+                            onChange={(event) => setCourierId(event.target.value)}
+                            disabled={actionLoading?.assignCourier}
+                          >
+                            <MenuItem value="">Select courier</MenuItem>
+                            {couriers.map((courier) => (
+                              <MenuItem key={courier.id} value={courier.id}>
+                                {courier.full_name} ({courier.email})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant="contained"
+                            onClick={handleAssignCourier}
+                            disabled={!courierId || actionLoading?.assignCourier}
+                            startIcon={
+                              actionLoading?.assignCourier ? (
+                                <CircularProgress size={16} />
+                              ) : null
+                            }
+                          >
+                            Assign
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={handleUnassignCourier}
+                            disabled={
+                              !assignedCourier ||
+                              actionLoading?.unassignCourier
+                            }
+                            startIcon={
+                              actionLoading?.unassignCourier ? (
+                                <CircularProgress size={16} />
+                              ) : null
+                            }
+                          >
+                            Unassign
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Stack>
+                  </Stack>
+
+                  <Divider />
+
+                  <Stack spacing={2}>
+                    <Typography variant="h6">Status</Typography>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <InputLabel id="admin-order-status-select">
+                          Status
+                        </InputLabel>
+                        <Select
+                          labelId="admin-order-status-select"
+                          label="Status"
+                          value={statusId}
+                          onChange={(event) => setStatusId(event.target.value)}
+                          disabled={actionLoading?.status}
+                        >
+                          {statuses.map((status) => (
+                            <MenuItem key={status.id} value={status.id}>
+                              {status.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        size="small"
+                        label="Note (optional)"
+                        value={statusNote}
+                        onChange={(event) => setStatusNote(event.target.value)}
+                        fullWidth
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleStatusChange}
+                        disabled={!statusId || actionLoading?.status}
+                        startIcon={
+                          actionLoading?.status ? (
+                            <CircularProgress size={16} />
+                          ) : null
+                        }
+                      >
+                        Change
+                      </Button>
+                    </Stack>
+                  </Stack>
+
+                  <Divider />
+
+                  <Stack spacing={2}>
+                    <Typography variant="h6">Delivery</Typography>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                      <TextField
+                        size="small"
+                        label="Contact name"
+                        value={deliveryContact}
+                        onChange={(event) => setDeliveryContact(event.target.value)}
+                      />
+                      <TextField
+                        size="small"
+                        label="Phone"
+                        value={deliveryPhone}
+                        onChange={(event) => setDeliveryPhone(event.target.value)}
+                      />
+                    </Stack>
+                    <TextField
+                      size="small"
+                      label="Address"
+                      value={deliveryAddress}
+                      onChange={(event) => setDeliveryAddress(event.target.value)}
+                      fullWidth
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={handleSaveDelivery}
+                      disabled={actionLoading?.delivery}
+                      startIcon={
+                        actionLoading?.delivery ? (
+                          <CircularProgress size={16} />
+                        ) : null
+                      }
+                    >
+                      Save delivery
+                    </Button>
+                  </Stack>
+
+                  <Divider />
+
+                  <Stack spacing={2}>
+                    <Typography variant="h6">Cancel order</Typography>
+                    <TextField
+                      size="small"
+                      label="Reason"
+                      value={cancelReason}
+                      onChange={(event) => setCancelReason(event.target.value)}
+                      fullWidth
+                      multiline
+                      minRows={2}
+                    />
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={handleCancelOrder}
+                      disabled={!cancelReason || actionLoading?.cancel}
+                      startIcon={
+                        actionLoading?.cancel ? (
+                          <CircularProgress size={16} />
+                        ) : null
+                      }
+                    >
+                      Cancel order
+                    </Button>
+                  </Stack>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
 
             <Divider />
 
@@ -523,51 +649,6 @@ export default function AdminOrderDetailsDialog({
                 </TableContainer>
               )}
             </Stack>
-
-            <Accordion expanded={historyExpanded} onChange={handleHistoryToggle}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>History</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {historyLoading && (
-                  <Stack alignItems="center" sx={{ py: 2 }}>
-                    <CircularProgress size={20} />
-                  </Stack>
-                )}
-                {historyError && !historyLoading && (
-                  <Alert severity="error">Failed to load history.</Alert>
-                )}
-                {!historyLoading && !historyError && historyItems.length === 0 && (
-                  <Typography>No history entries</Typography>
-                )}
-                {!historyLoading && !historyError && historyItems.length > 0 && (
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Changed at</TableCell>
-                          <TableCell>From</TableCell>
-                          <TableCell>To</TableCell>
-                          <TableCell>By</TableCell>
-                          <TableCell>Note</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {historyItems.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell>{formatDate(row.changed_at)}</TableCell>
-                            <TableCell>{row.oldStatusName || "—"}</TableCell>
-                            <TableCell>{row.newStatusName || "—"}</TableCell>
-                            <TableCell>{formatUser(row.changed_by)}</TableCell>
-                            <TableCell>{row.note || "—"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </AccordionDetails>
-            </Accordion>
           </Stack>
         )}
       </DialogContent>

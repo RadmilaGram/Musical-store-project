@@ -24,12 +24,13 @@ export async function takeCourierOrder(orderId) {
   return data;
 }
 
-export async function finishCourierOrder(orderId) {
+export async function finishCourierOrder(orderId, payload) {
   if (!orderId) {
     return null;
   }
   const { data } = await apiClient.post(
-    `/api/orders/${orderId}/courier/finish`
+    `/api/orders/${orderId}/courier/finish`,
+    payload
   );
   return data;
 }

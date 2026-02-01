@@ -4,6 +4,10 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Paper,
   Stack,
   Tab,
@@ -14,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import { useCourierOrders } from "../../use-cases/useCourierOrders";
@@ -45,6 +50,9 @@ export default function CourierOrdersPage() {
   const [openedOrderId, setOpenedOrderId] = useState(null);
   const [isHistoryOpen, setHistoryOpen] = useState(false);
   const [historyOrderId, setHistoryOrderId] = useState(null);
+  const [isFinishOpen, setFinishOpen] = useState(false);
+  const [finishOrderId, setFinishOrderId] = useState(null);
+  const [finishNote, setFinishNote] = useState("");
 
   useEffect(() => {
     loadMy().catch(() => {});
@@ -77,6 +85,7 @@ export default function CourierOrdersPage() {
   const handleOpenDetails = (orderId) => {
     setOpenedOrderId(orderId);
     loadDetails(orderId).catch(() => {});
+    loadHistory(orderId).catch(() => {});
     setDialogOpen(true);
   };
 
@@ -84,6 +93,27 @@ export default function CourierOrdersPage() {
     setHistoryOrderId(orderId);
     loadHistory(orderId).catch(() => {});
     setHistoryOpen(true);
+  };
+
+  const handleOpenFinish = (orderId) => {
+    if (!orderId) {
+      return;
+    }
+    setFinishOrderId(orderId);
+    setFinishNote("");
+    setFinishOpen(true);
+  };
+
+  const handleConfirmFinish = async () => {
+    if (!finishOrderId) {
+      return;
+    }
+    const trimmedNote = finishNote.trim();
+    const payload = trimmedNote ? { note: trimmedNote } : {};
+    await finishOrder(finishOrderId, payload);
+    setFinishOpen(false);
+    setFinishOrderId(null);
+    setFinishNote("");
   };
 
   return (
@@ -199,7 +229,7 @@ export default function CourierOrdersPage() {
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => finishOrder(order.id)}
+                      onClick={() => handleOpenFinish(order.id)}
                       disabled={loading}
                       sx={{ ml: 1 }}
                     >
@@ -221,6 +251,7 @@ export default function CourierOrdersPage() {
         loading={detailsLoading}
         error={detailsError}
         details={details}
+        historyNotes={history}
         onCancelOrder={null}
         orderId={openedOrderId}
         hideCancel
@@ -236,6 +267,42 @@ export default function CourierOrdersPage() {
         history={history}
         orderId={historyOrderId}
       />
+      <Dialog
+        open={isFinishOpen}
+        onClose={() => {
+          setFinishOpen(false);
+          setFinishOrderId(null);
+          setFinishNote("");
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Finish delivery</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            label="Note (optional)"
+            value={finishNote}
+            onChange={(event) => setFinishNote(event.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setFinishOpen(false);
+              setFinishOrderId(null);
+              setFinishNote("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleConfirmFinish}>
+            Finish
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

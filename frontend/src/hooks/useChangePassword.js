@@ -6,6 +6,7 @@ import {
   logout as logoutAction,
 } from "../store/authSlice";
 import { resetTradeIn } from "../store/tradeInSlice";
+import { clearCart } from "../store/cartSlice";
 
 export function useChangePassword() {
   const dispatch = useDispatch();
@@ -14,8 +15,10 @@ export function useChangePassword() {
     try {
       dispatch(authStart());
       await changePassword(payload);
+      localStorage.removeItem("token");
       dispatch(logoutAction());
       dispatch(resetTradeIn());
+      dispatch(clearCart());
       return { ok: true };
     } catch (e) {
       const message =
