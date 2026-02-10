@@ -43,7 +43,7 @@ export function useTradeInCatalogCrud() {
   const loadList = useCallback(async () => {
     dispatch(setLoading());
     try {
-      const data = await tradeInCatalogApi.list();
+      const data = await tradeInCatalogApi.listAdmin();
       dispatch(setItems(normalizeItems(data)));
       dispatch(setLastLoadedAt(Date.now()));
     } catch (err) {
@@ -75,7 +75,12 @@ export function useTradeInCatalogCrud() {
   const createEntry = useCallback(
     async (payload) => {
       try {
-        await tradeInCatalogApi.create(payload);
+        await tradeInCatalogApi.createAdmin({
+          product_id: payload?.productId,
+          reference_price: payload?.referencePrice,
+          base_discount_amount: payload?.baseDiscountAmount ?? null,
+          is_active: payload?.isActive ?? 1,
+        });
         await reload();
       } catch (err) {
         dispatch(
@@ -103,14 +108,27 @@ export function useTradeInCatalogCrud() {
   );
 
   const deleteEntry = useCallback(
-    async (productId) => {
+    async (offerId) => {
       try {
-        await tradeInCatalogApi.remove(productId);
+        await tradeInCatalogApi.remove(offerId);
         await reload();
       } catch (err) {
         dispatch(
           setError(getErrorMessage(err, "Failed to delete catalog entry"))
         );
+        throw err;
+      }
+    },
+    [reload, dispatch]
+  );
+
+  const toggleActive = useCallback(
+    async (id, isActive) => {
+      try {
+        await tradeInCatalogApi.toggleActive(id, isActive);
+        await reload();
+      } catch (err) {
+        dispatch(setError(getErrorMessage(err, "Failed to update offer")));
         throw err;
       }
     },
@@ -126,6 +144,7 @@ export function useTradeInCatalogCrud() {
     createEntry,
     updateEntry,
     deleteEntry,
+    toggleActive,
   };
 }
 

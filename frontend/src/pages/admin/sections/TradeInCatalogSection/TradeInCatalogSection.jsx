@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Alert, Box, Snackbar, Typography } from "@mui/material";
+import { Alert, Box, Snackbar, Switch, Typography } from "@mui/material";
 import EntityToolbar from "../../../../admin/crud/EntityToolbar";
 import CrudTable from "../../../../admin/crud/CrudTable";
 import RowActions from "../../../../admin/crud/RowActions";
@@ -45,6 +45,7 @@ export default function TradeInCatalogSection() {
     reload,
     updateEntry,
     deleteEntry,
+    toggleActive,
   } = useTradeInCatalogCrud();
   const {
     items: productItems,
@@ -58,6 +59,9 @@ export default function TradeInCatalogSection() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [inlineError, setInlineError] = useState(null);
+  const [activeConfirmOpen, setActiveConfirmOpen] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
     ensureLoaded().catch(() => {});
@@ -96,17 +100,57 @@ export default function TradeInCatalogSection() {
     setDeleteError(null);
   }, []);
 
+  const closeActiveConfirm = useCallback(() => {
+    setActiveConfirmOpen(false);
+    setPendingToggle(null);
+  }, []);
+
   const handleConfirmDelete = useCallback(async () => {
-    if (!entryToDelete?.productId) return;
+    if (!entryToDelete?.id) return;
     setIsDeleting(true);
     try {
-      await deleteEntry(entryToDelete.productId);
+      await deleteEntry(entryToDelete.id);
       closeConfirm();
     } catch (err) {
       setDeleteError(getErrorMessage(err, "Failed to delete catalog entry"));
       setIsDeleting(false);
     }
   }, [entryToDelete, deleteEntry, closeConfirm]);
+
+  const executeToggle = useCallback(
+    async (row, nextActive) => {
+      if (!row?.id) return;
+      setTogglingId(row.id);
+      try {
+        await toggleActive(row.id, nextActive);
+        setInlineError(null);
+      } catch (err) {
+        setInlineError(getErrorMessage(err, "Failed to update offer"));
+      } finally {
+        setTogglingId(null);
+        closeActiveConfirm();
+      }
+    },
+    [toggleActive, closeActiveConfirm]
+  );
+
+  const handleActiveToggle = useCallback(
+    (row, checked) => {
+      const nextActive = checked ? 1 : 0;
+      if (nextActive === 1) {
+        setPendingToggle({ row, nextActive });
+        setActiveConfirmOpen(true);
+        return;
+      }
+      executeToggle(row, nextActive);
+    },
+    [executeToggle]
+  );
+
+  const handleConfirmActive = useCallback(() => {
+    if (!pendingToggle?.row) return;
+    executeToggle(pendingToggle.row, pendingToggle.nextActive);
+  }, [pendingToggle, executeToggle]);
 
   const filteredRows = useMemo(() => {
     const query = (searchValue || "").trim().toLowerCase();
@@ -125,6 +169,8 @@ export default function TradeInCatalogSection() {
       return haystack.includes(query);
     });
   }, [items, searchValue]);
+
+  const isLoading = status === "loading";
 
   const columns = useMemo(
     () => [
@@ -163,6 +209,27 @@ export default function TradeInCatalogSection() {
         renderCell: ({ row }) => formatMoney(row.baseDiscountAmount),
       },
       {
+        field: "isActive",
+        headerName: "Active",
+        width: 120,
+        sortable: false,
+        filterable: false,
+        renderCell: ({ row }) => {
+          const isActive = Number(row?.isActive) === 1;
+          const isBusy = isLoading || togglingId === row?.id;
+          return (
+            <Switch
+              checked={isActive}
+              size="small"
+              onChange={(event) =>
+                handleActiveToggle(row, event.target.checked)
+              }
+              disabled={isBusy}
+            />
+          );
+        },
+      },
+      {
         field: "updatedAt",
         headerName: "Updated",
         width: 190,
@@ -191,7 +258,7 @@ export default function TradeInCatalogSection() {
         ),
       },
     ],
-    [handleDeleteRequest]
+    [handleDeleteRequest, handleActiveToggle, isLoading, togglingId]
   );
 
   const processRowUpdate = useCallback(
@@ -239,13 +306,6 @@ export default function TradeInCatalogSection() {
     setInlineError(getErrorMessage(err, "Failed to update entry"));
   }, []);
 
-  const isLoading = status === "loading";
-
-  const existingProductIds = useMemo(
-    () => (items || []).map((item) => item.productId),
-    [items]
-  );
-
   return (
     <Box sx={{ width: "100%" }}>
       <EntityToolbar
@@ -267,17 +327,18 @@ export default function TradeInCatalogSection() {
         rows={filteredRows}
         columns={columns}
         loading={isLoading}
-        getRowId={(row) => row.productId}
+        getRowId={(row) => row.id ?? row.productId}
         disableColumnMenu
         processRowUpdate={processRowUpdate}
         onProcessRowUpdateError={handleRowUpdateError}
+        isCellEditable={(params) => Number(params.row?.isActive) === 1}
       />
 
       <TradeInCatalogCreateDrawer
         open={createOpen}
         onClose={closeCreateDialog}
         products={productItems}
-        existingProductIds={existingProductIds}
+        offers={items}
       />
 
       <ConfirmDialog
@@ -292,6 +353,16 @@ export default function TradeInCatalogSection() {
         onConfirm={handleConfirmDelete}
         onClose={closeConfirm}
         loading={isDeleting}
+      />
+
+      <ConfirmDialog
+        open={activeConfirmOpen}
+        title="Activate offer?"
+        description="Only one active offer per product. Other offers will be deactivated."
+        confirmText="Activate"
+        onConfirm={handleConfirmActive}
+        onClose={closeActiveConfirm}
+        loading={Boolean(togglingId)}
       />
 
       <Snackbar

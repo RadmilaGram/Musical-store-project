@@ -8,14 +8,11 @@ export default function TradeInCatalogCreateDrawer({
   open,
   onClose,
   products,
-  existingProductIds,
+  offers,
 }) {
   const { createCatalogEntry, isSubmitting } = useCreateTradeInCatalog();
 
-  const form = useTradeInCatalogCreateForm({
-    products,
-    existingProductIds,
-  });
+  const form = useTradeInCatalogCreateForm({ products });
 
   const handleUseCurrentPrice = () => {
     if (form.selectedProduct?.price != null) {
@@ -58,6 +55,7 @@ export default function TradeInCatalogCreateDrawer({
         errors={form.errors}
         handleSubmit={form.handleSubmit}
         onSubmit={onSubmit}
+        offers={offers}
         typeOptions={form.typeOptions}
         brandOptions={form.brandOptions}
         typeId={form.typeId}

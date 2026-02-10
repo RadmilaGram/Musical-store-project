@@ -49,6 +49,26 @@ const normalizeOptionalString = (value) => {
   return trimmed.length ? trimmed : null;
 };
 
+const normalizeProductImg = (value) => {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) return null;
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    try {
+      const url = new URL(normalized);
+      if (url.pathname && url.pathname.startsWith("/uploads/")) {
+        return url.pathname;
+      }
+      return normalized;
+    } catch (err) {
+      return normalized;
+    }
+  }
+  if (normalized.startsWith("/uploads/")) {
+    return normalized;
+  }
+  return normalized;
+};
+
 const normalizeSpecialFields = (value) => {
   if (value == null) return {};
   if (typeof value === "string") {
@@ -105,7 +125,7 @@ const validateProductPayload = (body) => {
     data: {
       name,
       description: normalizeOptionalString(body?.description),
-      img: normalizeOptionalString(body?.img),
+      img: normalizeProductImg(body?.img),
       price,
       brandId,
       statusId,

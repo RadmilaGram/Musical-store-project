@@ -16,10 +16,7 @@ const defaultValues = {
   referencePrice: "",
 };
 
-export function useTradeInCatalogCreateForm({
-  products = [],
-  existingProductIds = [],
-}) {
+export function useTradeInCatalogCreateForm({ products = [] }) {
   const form = useForm({
     defaultValues,
     resolver: yupResolver(tradeInCatalogCreateSchema),
@@ -106,23 +103,21 @@ export function useTradeInCatalogCreateForm({
       })
       .then((data) => {
         if (!active) return;
-        const filtered = (data || [])
-          .filter((item) => !existingProductIds.includes(item.id))
-          .map((item) => ({
-            id: item.id,
-            label: item.name,
-            price:
-              item.price === null || typeof item.price === "undefined"
-                ? null
-                : Number(item.price),
-            img: item.img,
-            brandName: item.brandName,
-            typeName: item.typeName,
-            secondary: [item.brandName, item.typeName]
-              .filter(Boolean)
-              .join(" • "),
-          }));
-        setPickerOptions(filtered);
+        const mapped = (data || []).map((item) => ({
+          id: item.id,
+          label: item.name,
+          price:
+            item.price === null || typeof item.price === "undefined"
+              ? null
+              : Number(item.price),
+          img: item.img,
+          brandName: item.brandName,
+          typeName: item.typeName,
+          secondary: [item.brandName, item.typeName]
+            .filter(Boolean)
+            .join(" • "),
+        }));
+        setPickerOptions(mapped);
       })
       .catch((err) => {
         if (!active) return;
@@ -138,7 +133,7 @@ export function useTradeInCatalogCreateForm({
     return () => {
       active = false;
     };
-  }, [debouncedSearch, typeId, brandId, existingProductIds]);
+  }, [debouncedSearch, typeId, brandId]);
 
   const handleProductSelect = (product) => {
     setSelectedProduct(product || null);

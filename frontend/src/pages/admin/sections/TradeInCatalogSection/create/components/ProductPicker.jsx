@@ -125,7 +125,7 @@ export default function ProductPicker({
                 width: 72,
                 height: 72,
                 borderRadius: 1,
-                objectFit: "cover",
+                objectFit: "contain",
                 flexShrink: 0,
               }}
             />

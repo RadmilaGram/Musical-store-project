@@ -204,11 +204,14 @@ CREATE TABLE `special_field_values` (
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `trade_in_catalog` (
+  `id` int NOT NULL AUTO_INCREMENT,
   `product_id` int NOT NULL,
   `reference_price` decimal(10,2) NOT NULL,
   `base_discount_amount` decimal(10,2) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`product_id`),
+  PRIMARY KEY (`id`),
+  KEY `idx_trade_in_product_active` (`product_id`,`is_active`),
   KEY `idx_trade_in_updated` (`updated_at`),
   CONSTRAINT `fk_trade_in_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

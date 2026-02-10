@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   Box,
   Button,
   FormHelperText,
@@ -20,6 +21,7 @@ export default function TradeInCatalogCreateForm({
   errors,
   onSubmit,
   handleSubmit,
+  offers,
   typeOptions,
   brandOptions,
   typeId,
@@ -48,6 +50,16 @@ export default function TradeInCatalogCreateForm({
   effectiveCapAmount,
   isSubmitting,
 }) {
+  const hasActiveOffer = React.useMemo(() => {
+    const selectedId = selectedProduct?.id || "";
+    if (!selectedId) return false;
+    return (offers || []).some(
+      (offer) =>
+        Number(offer?.productId) === Number(selectedId) &&
+        Number(offer?.isActive) === 1
+    );
+  }, [offers, selectedProduct]);
+
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)}>
       <ProductPicker
@@ -66,6 +78,13 @@ export default function TradeInCatalogCreateForm({
         selectedProduct={selectedProduct}
         onProductSelect={onProductSelect}
       />
+
+      {hasActiveOffer && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          An active offer for this product already exists and will be
+          deactivated after saving this new offer.
+        </Alert>
+      )}
 
       <Controller
         name="referencePrice"
@@ -170,14 +189,6 @@ export default function TradeInCatalogCreateForm({
         )}
       </Box>
 
-      <Button
-        sx={{ mt: 3 }}
-        variant="contained"
-        type="submit"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "Saving..." : "Save"}
-      </Button>
       <FormHelperText sx={{ mt: 1 }}>
         Final payout = cap × condition percent (configured in Trade-in Conditions).
       </FormHelperText>

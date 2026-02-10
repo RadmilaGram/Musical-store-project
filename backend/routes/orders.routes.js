@@ -1615,7 +1615,7 @@ function createOrdersRouter(db) {
           .map(() => "?")
           .join(", ");
         const catalogRows = await query(
-          `SELECT product_id, base_discount_amount FROM trade_in_catalog WHERE product_id IN (${tradeInProductPlaceholders})`,
+          `SELECT product_id, base_discount_amount FROM trade_in_catalog WHERE product_id IN (${tradeInProductPlaceholders}) AND is_active = 1`,
           tradeInProductIds
         );
         const baseByProductId = new Map(
