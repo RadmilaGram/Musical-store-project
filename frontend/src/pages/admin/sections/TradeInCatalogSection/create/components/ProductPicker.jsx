@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { API_URL } from "../../../../../../utils/apiService/ApiService";
+import ImagePreviewDialog from "../../../../../../components/ui/ImagePreviewDialog";
 
 export default function ProductPicker({
   typeOptions,
@@ -27,6 +28,7 @@ export default function ProductPicker({
   selectedProduct,
   onProductSelect,
 }) {
+  const [isImageOpen, setImageOpen] = React.useState(false);
   return (
     <>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mt: 1 }}>
@@ -104,32 +106,8 @@ export default function ProductPicker({
             borderRadius: 1,
             border: "1px solid",
             borderColor: "divider",
-            display: "flex",
-            gap: 2,
-            alignItems: "center",
           }}
         >
-          {selectedProduct.img && (
-            <Box
-              component="img"
-              src={
-                selectedProduct.img.startsWith("http")
-                  ? selectedProduct.img
-                  : `${API_URL}${selectedProduct.img}`
-              }
-              alt={selectedProduct.name}
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-              sx={{
-                width: 72,
-                height: 72,
-                borderRadius: 1,
-                objectFit: "contain",
-                flexShrink: 0,
-              }}
-            />
-          )}
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="subtitle2">
               {selectedProduct.label || selectedProduct.name}
@@ -145,7 +123,71 @@ export default function ProductPicker({
               </Typography>
             )}
           </Box>
+          {selectedProduct.img && (
+            <Box
+              sx={{
+                mt: 2,
+                width: "100%",
+                height: 240,
+                bgcolor: "#fff",
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                overflow: "hidden",
+                position: "relative",
+                cursor: "pointer",
+                transition: "transform 0.2s",
+                "&:after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  bgcolor: "rgba(0,0,0,0.12)",
+                  opacity: 0,
+                  transition: "opacity 0.2s",
+                  pointerEvents: "none",
+                },
+                "&:hover": {
+                  transform: "scale(1.02)",
+                },
+                "&:hover:after": {
+                  opacity: 1,
+                },
+              }}
+              onClick={() => setImageOpen(true)}
+            >
+              <Box
+                component="img"
+                src={
+                  selectedProduct.img.startsWith("http")
+                    ? selectedProduct.img
+                    : `${API_URL}${selectedProduct.img}`
+                }
+                alt={selectedProduct.name}
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+            </Box>
+          )}
         </Box>
+      )}
+      {selectedProduct?.img && (
+        <ImagePreviewDialog
+          open={isImageOpen}
+          src={
+            selectedProduct.img.startsWith("http")
+              ? selectedProduct.img
+              : `${API_URL}${selectedProduct.img}`
+          }
+          alt={selectedProduct.name}
+          onClose={() => setImageOpen(false)}
+        />
       )}
       {pickerError && (
         <Alert severity="error" sx={{ mt: 2 }}>

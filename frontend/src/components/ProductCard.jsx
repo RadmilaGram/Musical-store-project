@@ -1,6 +1,6 @@
 // src/components/ProductCard.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { Card, CardMedia, Typography, IconButton, Box } from "@mui/material";
+import { Card, Typography, IconButton, Box } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -10,6 +10,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { API_URL } from "../utils/apiService/ApiService";
 import { useCart } from "../hooks/useCart";
 import { normalizeSpecialFieldsForDisplay } from "../utils/specialFields/normalizeSpecialFieldsForDisplay";
+import ImagePreviewDialog from "./ui/ImagePreviewDialog";
 
 export default function ProductCard({
   product,
@@ -23,6 +24,7 @@ export default function ProductCard({
   const { items, add, remove } = useCart();
   const cartItem = items.find((i) => i.id === product.id);
   const quantity = cartItem?.quantity ?? 0;
+  const [isImageOpen, setImageOpen] = useState(false);
 
   const CLAMP_LINES = 4;
   const imageUrl = product.img
@@ -67,19 +69,50 @@ export default function ProductCard({
     >
       {/* Top: image + title + special fields */}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <CardMedia
-          component="img"
-          image={imageUrl}
-          alt={product.name}
+        <Box
           sx={{
             width: 200,
             height: 200,
-            objectFit: "contain",
+            bgcolor: "#fff",
+            border: 1,
+            borderColor: "divider",
             borderRadius: 1,
+            overflow: "hidden",
             flexShrink: 0,
+            position: "relative",
+            cursor: "pointer",
+            transition: "transform 0.2s",
+            "&:after": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              bgcolor: "rgba(0,0,0,0.12)",
+              opacity: 0,
+              transition: "opacity 0.2s",
+              pointerEvents: "none",
+            },
+            "&:hover": {
+              transform: "scale(1.02)",
+            },
+            "&:hover:after": {
+              opacity: 1,
+            },
           }}
-          onError={(e) => (e.target.src = "/images/default-product.jpg")}
-        />
+          onClick={() => setImageOpen(true)}
+        >
+          <Box
+            component="img"
+            src={imageUrl}
+            alt={product.name}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              display: "block",
+            }}
+            onError={(e) => (e.target.src = "/images/default-product.jpg")}
+          />
+        </Box>
         <Box
           sx={{
             ml: 2,
@@ -153,6 +186,13 @@ export default function ProductCard({
           </Box>
         </Box>
       </Box>
+
+      <ImagePreviewDialog
+        open={isImageOpen}
+        src={imageUrl}
+        alt={product.name}
+        onClose={() => setImageOpen(false)}
+      />
 
       {/* Status & Price Top Right */}
       <Box

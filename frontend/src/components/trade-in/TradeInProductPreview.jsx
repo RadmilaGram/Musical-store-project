@@ -1,8 +1,9 @@
-import React from "react";
-import { Box, Card, Stack, Typography } from "@mui/material";
+import React, { useState } from "react";
+import { Box, Card, Paper, Stack, Typography } from "@mui/material";
 import ImageIcon from "@mui/icons-material/Image";
 import { API_URL } from "../../utils/apiService/ApiService";
 import { normalizeSpecialFieldsForDisplay } from "../../utils/specialFields/normalizeSpecialFieldsForDisplay";
+import ImagePreviewDialog from "../ui/ImagePreviewDialog";
 
 export default function TradeInProductPreview({
   catalogEntry,
@@ -16,6 +17,7 @@ export default function TradeInProductPreview({
   if (!catalogEntry) return null;
 
   const imageUrl = productDetails?.img ? `${API_URL}${productDetails.img}` : null;
+  const [isImageOpen, setImageOpen] = useState(false);
   const conditionLabel = condition ? condition.code : null;
   const discountValue = offer?.discount ?? 0;
   const rawSpecialFields =
@@ -45,22 +47,56 @@ export default function TradeInProductPreview({
     : [];
 
   return (
-    <Card sx={{ p: 2, bgcolor: "#f7f9fc" }}>
-      <Stack spacing={2} direction={{ xs: "column", sm: "row" }}>
+    <Stack spacing={2}>
+      <Card sx={{ p: 2, bgcolor: "#f7f9fc" }}>
+        <Stack spacing={2} direction={{ xs: "column", sm: "row" }}>
         {imageUrl ? (
           <Box
-            component="img"
-            src={imageUrl}
-            alt={catalogEntry.name}
             sx={{
               width: 168,
               height: 168,
-              objectFit: "contain",
-              borderRadius: 1,
               bgcolor: "#fff",
+              border: 1,
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+              flexShrink: 0,
+              position: "relative",
+              cursor: "pointer",
+              transition: "transform 0.2s",
+              "&:after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                bgcolor: "rgba(0,0,0,0.12)",
+                opacity: 0,
+                transition: "opacity 0.2s",
+                pointerEvents: "none",
+              },
+              "&:hover": {
+                transform: "scale(1.02)",
+              },
+              "&:hover:after": {
+                opacity: 1,
+              },
             }}
-            onError={(e) => (e.currentTarget.src = "/images/default-product.jpg")}
-          />
+            onClick={() => setImageOpen(true)}
+          >
+            <Box
+              component="img"
+              src={imageUrl}
+              alt={catalogEntry.name}
+              sx={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+              onError={(e) =>
+                (e.currentTarget.src = "/images/default-product.jpg")
+              }
+            />
+          </Box>
         ) : (
           <Box
             sx={{
@@ -145,27 +181,55 @@ export default function TradeInProductPreview({
               )
             )}
             
-            <Box sx={{ p: 1.5, bgcolor: "#fff", borderRadius: 1 }}>
-              <Typography variant="subtitle2">Offer</Typography>
-              {condition ? (
-                <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
-                  <Typography variant="body2">
-                    Condition: {conditionLabel}
-                  </Typography>
-                  <Typography variant="body2">
-                    Discount: ${discountValue}
-                  </Typography>
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Select condition to see discount
-                </Typography>
-              )}
-            </Box>
-
           </Stack>
         </Box>
-      </Stack>
-    </Card>
+        </Stack>
+        {imageUrl && (
+          <ImagePreviewDialog
+            open={isImageOpen}
+            src={imageUrl}
+            alt={catalogEntry.name}
+            onClose={() => setImageOpen(false)}
+          />
+        )}
+      </Card>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1.5,
+          transition: "box-shadow 0.2s ease",
+          "&:hover": { boxShadow: 4 },
+        }}
+      >
+        <Typography variant="subtitle2">Offer</Typography>
+        {condition ? (
+          <Box
+            sx={{
+              mt: 0.5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Condition: {conditionLabel}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                Discount:
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                ${discountValue}
+              </Typography>
+            </Box>
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            Select condition to see discount
+          </Typography>
+        )}
+      </Paper>
+    </Stack>
   );
 }

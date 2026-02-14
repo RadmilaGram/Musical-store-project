@@ -17,6 +17,8 @@ const HomePage = () => {
           <Grid item xs={12} sm={6} md={4} key={group.id}>
             <Card
               sx={{
+                display: "flex",
+                flexDirection: "column",
                 maxWidth: 350,
                 margin: "0 auto",
                 boxShadow: 3,
@@ -39,10 +41,11 @@ const HomePage = () => {
               >
                 <CardMedia
                   component="img"
-                  height="300"
                   image={group.image}
                   alt={group.title}
                   sx={{
+                    aspectRatio: "16 / 14",
+                    width: "100%",
                     objectFit: "cover",
                     borderTopLeftRadius: "12px",
                     borderTopRightRadius: "12px",
@@ -51,7 +54,7 @@ const HomePage = () => {
                     e.target.src = "/images/default-group.jpg";
                   }}
                 />
-                <CardContent>
+                <CardContent sx={{ mt: "auto" }}>
                   <Typography
                     variant="h6"
                     align="center"

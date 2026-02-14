@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -9,6 +9,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RemoveIcon from "@mui/icons-material/Remove";
+import ImagePreviewDialog from "../ui/ImagePreviewDialog";
 
 export default function TradeInSelectedItemCard({
   item,
@@ -21,6 +22,7 @@ export default function TradeInSelectedItemCard({
   const subtitle = [item.brand_name, item.type_name].filter(Boolean).join(" • ");
   const quantity = item.quantity ?? 1;
   const totalDiscount = Number(item.expectedDiscount) * quantity;
+  const [isImageOpen, setImageOpen] = useState(false);
 
   return (
     <Card sx={{ p: 1.5 }}>
@@ -38,25 +40,58 @@ export default function TradeInSelectedItemCard({
         >
           {imageUrl ? (
             <Box
-              component="img"
-              src={imageUrl}
-              alt={item.name}
               sx={{
-                width: 64,
-                height: 64,
-                objectFit: "contain",
+                width: 90,
+                height: 90,
+                bgcolor: "#fff",
+                border: 1,
+                borderColor: "divider",
                 borderRadius: 1,
-                bgcolor: "#f5f5f5",
+                overflow: "hidden",
+                flexShrink: 0,
+                position: "relative",
+                cursor: "pointer",
+                transition: "transform 0.2s",
+                "&:after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  bgcolor: "rgba(0,0,0,0.12)",
+                  opacity: 0,
+                  transition: "opacity 0.2s",
+                  pointerEvents: "none",
+                },
+                "&:hover": {
+                  transform: "scale(1.02)",
+                },
+                "&:hover:after": {
+                  opacity: 1,
+                },
               }}
-              onError={onImageError}
-            />
+              onClick={() => setImageOpen(true)}
+            >
+              <Box
+                component="img"
+                src={imageUrl}
+                alt={item.name}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+                onError={onImageError}
+              />
+            </Box>
           ) : (
             <Box
               sx={{
-                width: 64,
-                height: 64,
+                width: 90,
+                height: 90,
                 borderRadius: 1,
-                bgcolor: "#e0e0e0",
+                bgcolor: "#f5f5f5",
+                border: 1,
+                borderColor: "divider",
               }}
             />
           )}
@@ -150,6 +185,14 @@ export default function TradeInSelectedItemCard({
           </IconButton>
         </Stack>
       </Stack>
+      {imageUrl && (
+        <ImagePreviewDialog
+          open={isImageOpen}
+          src={imageUrl}
+          alt={item.name}
+          onClose={() => setImageOpen(false)}
+        />
+      )}
     </Card>
   );
 }
