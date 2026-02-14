@@ -10,6 +10,48 @@ const allowedTransitions = {
   canceled: [],
 };
 
+const managerCourierSortFields = {
+  order_id: "o.id",
+  created_at: "o.created_at",
+  status: "o.statusId",
+  total_final: "o.total_final",
+};
+
+function resolveLimitOffset(req) {
+  const limitRaw = Number(req.query?.limit);
+  const offsetRaw = Number(req.query?.offset);
+  const limit = Number.isInteger(limitRaw)
+    ? Math.min(Math.max(limitRaw, 1), 100)
+    : 20;
+  const offset = Number.isInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+  return { limit, offset };
+}
+
+function resolveManagerCourierSort(req, res) {
+  const sortByRaw = req.query?.sortBy;
+  const sortDirRaw = req.query?.sortDir;
+  const sortBy =
+    typeof sortByRaw === "string" && sortByRaw.trim()
+      ? sortByRaw.trim()
+      : "created_at";
+  const sortDir =
+    typeof sortDirRaw === "string" && sortDirRaw.trim()
+      ? sortDirRaw.trim().toLowerCase()
+      : "desc";
+
+  const sortField = managerCourierSortFields[sortBy];
+  if (!sortField) {
+    res.status(400).json({ ok: false, message: "Invalid sortBy" });
+    return null;
+  }
+  if (!["asc", "desc"].includes(sortDir)) {
+    res.status(400).json({ ok: false, message: "Invalid sortDir" });
+    return null;
+  }
+
+  return `${sortField} ${sortDir.toUpperCase()}`;
+}
+
 function createOrdersRouter(db) {
   const router = express.Router();
   const requireAuth = createRequireAuth(db);
@@ -57,6 +99,12 @@ function createOrdersRouter(db) {
       return res.status(403).json({ ok: false, message: "Forbidden" });
     }
 
+    const orderBy = resolveManagerCourierSort(req, res);
+    if (!orderBy) {
+      return;
+    }
+    const { limit, offset } = resolveLimitOffset(req);
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -76,6 +124,19 @@ function createOrdersRouter(db) {
           .json({ ok: false, message: "Missing order status" });
       }
 
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM orders o
+        WHERE o.statusId = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+              AND oa.active = 1
+          )
+      `;
+
       const ordersQuery = `
         SELECT
           o.id,
@@ -94,10 +155,13 @@ function createOrdersRouter(db) {
               AND oa.user_role_id = 3
               AND oa.active = 1
           )
-        ORDER BY o.created_at ASC
+        ORDER BY ${orderBy}
+        LIMIT ? OFFSET ?
       `;
 
-      const rows = await query(ordersQuery, [statusId]);
+      const countRows = await query(countQuery, [statusId]);
+      const total = Number(countRows?.[0]?.total ?? 0);
+      const rows = await query(ordersQuery, [statusId, limit, offset]);
       const items = (rows || []).map((row) => ({
         id: row.id,
         createdAt: row.createdAt,
@@ -107,7 +171,7 @@ function createOrdersRouter(db) {
         total: Number(row.total ?? 0),
       }));
 
-      return res.json({ items });
+      return res.json({ items, page: { limit, offset, total } });
     } catch (err) {
       console.error("Failed to fetch manager queue:", err);
       return res
@@ -122,6 +186,13 @@ function createOrdersRouter(db) {
       return res.status(403).json({ ok: false, message: "Forbidden" });
     }
 
+    const hideClosed = String(req.query?.hideClosed || "") === "1";
+    const orderBy = resolveManagerCourierSort(req, res);
+    if (!orderBy) {
+      return;
+    }
+    const { limit, offset } = resolveLimitOffset(req);
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -135,10 +206,27 @@ function createOrdersRouter(db) {
       role === 3
         ? "AND oa.user_id = ?"
         : "";
+    const hideClosedClause = hideClosed
+      ? "AND s.name NOT IN ('finished', 'canceled')"
+      : "";
 
     if (role === 3) {
       params.push(req.user?.id);
     }
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM orders o
+      JOIN order_status s ON s.id = o.statusId
+      WHERE EXISTS (
+        SELECT 1
+        FROM order_assignments oa
+        WHERE oa.order_id = o.id
+          AND oa.user_role_id = 3
+          ${ownershipClause}
+      )
+      ${hideClosedClause}
+    `;
 
     const ordersQuery = `
       SELECT
@@ -157,11 +245,15 @@ function createOrdersRouter(db) {
           AND oa.user_role_id = 3
           ${ownershipClause}
       )
-      ORDER BY o.created_at DESC
+      ${hideClosedClause}
+      ORDER BY ${orderBy}
+      LIMIT ? OFFSET ?
     `;
 
     try {
-      const rows = await query(ordersQuery, params);
+      const countRows = await query(countQuery, params);
+      const total = Number(countRows?.[0]?.total ?? 0);
+      const rows = await query(ordersQuery, [...params, limit, offset]);
       const items = (rows || []).map((row) => ({
         id: row.id,
         createdAt: row.createdAt,
@@ -170,7 +262,7 @@ function createOrdersRouter(db) {
         totalDiscount: Number(row.totalDiscount ?? 0),
         total: Number(row.total ?? 0),
       }));
-      return res.json({ items });
+      return res.json({ items, page: { limit, offset, total } });
     } catch (err) {
       console.error("Failed to fetch manager orders:", err);
       return res
@@ -770,6 +862,12 @@ function createOrdersRouter(db) {
       return res.status(403).json({ ok: false, message: "Forbidden" });
     }
 
+    const orderBy = resolveManagerCourierSort(req, res);
+    if (!orderBy) {
+      return;
+    }
+    const { limit, offset } = resolveLimitOffset(req);
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -789,6 +887,19 @@ function createOrdersRouter(db) {
           .json({ ok: false, message: "Missing order status" });
       }
 
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM orders o
+        WHERE o.statusId = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 4
+              AND oa.active = 1
+          )
+      `;
+
       const ordersQuery = `
         SELECT
           o.id,
@@ -807,10 +918,13 @@ function createOrdersRouter(db) {
               AND oa.user_role_id = 4
               AND oa.active = 1
           )
-        ORDER BY o.created_at ASC
+        ORDER BY ${orderBy}
+        LIMIT ? OFFSET ?
       `;
 
-      const rows = await query(ordersQuery, [statusId]);
+      const countRows = await query(countQuery, [statusId]);
+      const total = Number(countRows?.[0]?.total ?? 0);
+      const rows = await query(ordersQuery, [statusId, limit, offset]);
       const items = (rows || []).map((row) => ({
         id: row.id,
         createdAt: row.createdAt,
@@ -820,7 +934,7 @@ function createOrdersRouter(db) {
         total: Number(row.total ?? 0),
       }));
 
-      return res.json({ items });
+      return res.json({ items, page: { limit, offset, total } });
     } catch (err) {
       console.error("Failed to fetch courier queue:", err);
       return res
@@ -835,6 +949,13 @@ function createOrdersRouter(db) {
       return res.status(403).json({ ok: false, message: "Forbidden" });
     }
 
+    const hideClosed = String(req.query?.hideClosed || "") === "1";
+    const orderBy = resolveManagerCourierSort(req, res);
+    if (!orderBy) {
+      return;
+    }
+    const { limit, offset } = resolveLimitOffset(req);
+
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, results) => {
@@ -844,6 +965,21 @@ function createOrdersRouter(db) {
       });
 
     try {
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM orders o
+        JOIN order_status s ON s.id = o.statusId
+        WHERE EXISTS (
+          SELECT 1
+          FROM order_assignments oa
+          WHERE oa.order_id = o.id
+            AND oa.user_role_id = 4
+            AND oa.user_id = ?
+            AND oa.active = 1
+        )
+        ${hideClosed ? "AND s.name NOT IN ('finished', 'canceled')" : ""}
+      `;
+
       const ordersQuery = `
         SELECT
           o.id,
@@ -862,10 +998,14 @@ function createOrdersRouter(db) {
             AND oa.user_id = ?
             AND oa.active = 1
         )
-        ORDER BY o.created_at DESC
+        ${hideClosed ? "AND s.name NOT IN ('finished', 'canceled')" : ""}
+        ORDER BY ${orderBy}
+        LIMIT ? OFFSET ?
       `;
 
-      const rows = await query(ordersQuery, [req.user?.id]);
+      const countRows = await query(countQuery, [req.user?.id]);
+      const total = Number(countRows?.[0]?.total ?? 0);
+      const rows = await query(ordersQuery, [req.user?.id, limit, offset]);
       const items = (rows || []).map((row) => ({
         id: row.id,
         createdAt: row.createdAt,
@@ -875,7 +1015,7 @@ function createOrdersRouter(db) {
         total: Number(row.total ?? 0),
       }));
 
-      return res.json({ items });
+      return res.json({ items, page: { limit, offset, total } });
     } catch (err) {
       console.error("Failed to fetch courier orders:", err);
       return res

@@ -386,9 +386,6 @@ function createOrdersAdminRouter(db) {
       return res.status(400).json({ ok: false, message: "Invalid user_id" });
     }
 
-    const roleLabel = roleId === 3 ? "manager" : "courier";
-    const note = `Assigned ${roleLabel} to user ${userId}`;
-
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, rows) => {
@@ -430,8 +427,42 @@ function createOrdersAdminRouter(db) {
         return res.status(404).json({ ok: false, message: "Order not found" });
       }
 
+      if (roleId === 4) {
+        const readyStatusRows = await query(
+          "SELECT id FROM order_status WHERE name = 'ready' LIMIT 1"
+        );
+        const readyStatusId = readyStatusRows?.[0]?.id;
+        if (!readyStatusId) {
+          await rollback();
+          return res
+            .status(500)
+            .json({ ok: false, message: "Missing order status" });
+        }
+        if (Number(orderRow.statusId) !== Number(readyStatusId)) {
+          await rollback();
+          return res.status(400).json({
+            ok: false,
+            message: "Courier can be assigned only when order status is ready",
+          });
+        }
+      }
+
+      const roleRows = await query(
+        "SELECT role FROM user_role WHERE id = ? LIMIT 1",
+        [roleId]
+      );
+      const roleValue = roleRows?.[0]?.role;
+      const roleLabel =
+        roleValue === "manager"
+          ? "Manager"
+          : roleValue === "courier"
+          ? "Courier"
+          : roleId === 3
+          ? "Manager"
+          : "Courier";
+
       const userRows = await query(
-        "SELECT id, role FROM users WHERE id = ? LIMIT 1",
+        "SELECT id, role, full_name AS fullName, email FROM users WHERE id = ? LIMIT 1",
         [userId]
       );
       const userRow = userRows?.[0];
@@ -445,6 +476,23 @@ function createOrdersAdminRouter(db) {
           .status(400)
           .json({ ok: false, message: "User role mismatch" });
       }
+
+      const activeAssignmentRows = await query(
+        `
+        SELECT oa.user_id AS userId, u.full_name AS fullName, u.email AS email
+        FROM order_assignments oa
+        JOIN users u ON u.id = oa.user_id
+        WHERE oa.order_id = ? AND oa.user_role_id = ? AND oa.active = 1
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [orderId, roleId]
+      );
+      const activeAssignment = activeAssignmentRows?.[0];
+
+      const note = activeAssignment
+        ? `${roleLabel} reassigned: ${activeAssignment.fullName} (${activeAssignment.email}) → ${userRow.fullName} (${userRow.email})`
+        : `${roleLabel} assigned: ${userRow.fullName} (${userRow.email})`;
 
       await query(
         "UPDATE order_assignments SET active = 0, unassigned_at = NOW() WHERE order_id = ? AND user_role_id = ? AND active = 1",
@@ -487,13 +535,6 @@ function createOrdersAdminRouter(db) {
         .json({ ok: false, message: "Invalid user_role_id" });
     }
 
-    const noteRaw = req.body?.note;
-    const roleLabel = roleId === 3 ? "manager" : "courier";
-    const note =
-      typeof noteRaw === "string" && noteRaw.trim()
-        ? noteRaw.trim()
-        : `Unassigned ${roleLabel}`;
-
     const query = (sql, params = []) =>
       new Promise((resolve, reject) => {
         db.query(sql, params, (err, rows) => {
@@ -534,6 +575,41 @@ function createOrdersAdminRouter(db) {
         await rollback();
         return res.status(404).json({ ok: false, message: "Order not found" });
       }
+
+      const roleRows = await query(
+        "SELECT role FROM user_role WHERE id = ? LIMIT 1",
+        [roleId]
+      );
+      const roleValue = roleRows?.[0]?.role;
+      const roleLabel =
+        roleValue === "manager"
+          ? "Manager"
+          : roleValue === "courier"
+          ? "Courier"
+          : roleId === 3
+          ? "Manager"
+          : "Courier";
+
+      const assignmentRows = await query(
+        `
+        SELECT oa.user_id AS userId, u.full_name AS fullName, u.email AS email
+        FROM order_assignments oa
+        JOIN users u ON u.id = oa.user_id
+        WHERE oa.order_id = ? AND oa.user_role_id = ? AND oa.active = 1
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [orderId, roleId]
+      );
+      const assignment = assignmentRows?.[0];
+      if (!assignment) {
+        await rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "No active assignment" });
+      }
+
+      const note = `${roleLabel} unassigned: ${assignment.fullName} (${assignment.email})`;
 
       const result = await query(
         "UPDATE order_assignments SET active = 0, unassigned_at = NOW() WHERE order_id = ? AND user_role_id = ? AND active = 1",

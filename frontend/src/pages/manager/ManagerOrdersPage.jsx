@@ -8,7 +8,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -21,6 +23,8 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
+  TableSortLabel,
   TableRow,
   TextField,
   Typography,
@@ -39,6 +43,8 @@ export default function ManagerOrdersPage() {
   const {
     queue,
     my,
+    queuePage,
+    myPage,
     loading,
     error,
     details,
@@ -50,6 +56,8 @@ export default function ManagerOrdersPage() {
     cancelLoading,
     cancelError,
     refreshAll,
+    loadQueue,
+    loadMy,
     takeOrder,
     markReady,
     loadDetails,
@@ -60,6 +68,11 @@ export default function ManagerOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [hideClosed, setHideClosed] = useState(true);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [openedOrderId, setOpenedOrderId] = useState(null);
   const [isHistoryOpen, setHistoryOpen] = useState(false);
@@ -70,8 +83,16 @@ export default function ManagerOrdersPage() {
   const [markReadyOrderId, setMarkReadyOrderId] = useState(null);
   const [markReadyNote, setMarkReadyNote] = useState("");
 
+  const buildOptions = (overrides = {}) => ({
+    sortBy: overrides.sortBy ?? sortBy,
+    sortDir: overrides.sortDir ?? sortDir,
+    hideClosed: overrides.hideClosed ?? hideClosed,
+    limit: overrides.limit ?? rowsPerPage,
+    offset: overrides.offset ?? page * rowsPerPage,
+  });
+
   useEffect(() => {
-    refreshAll().catch(() => {});
+    refreshAll(buildOptions()).catch(() => {});
   }, [refreshAll]);
 
   const formatDate = (value) => {
@@ -138,7 +159,7 @@ export default function ManagerOrdersPage() {
 
   const handleConfirmCancel = async (reason) => {
     try {
-      await cancelOrder(cancelOrderId, reason);
+      await cancelOrder(cancelOrderId, reason, buildOptions());
       setCancelOpen(false);
       setCancelOrderId(null);
       setDialogOpen(false);
@@ -149,7 +170,7 @@ export default function ManagerOrdersPage() {
   };
 
   const handleTake = async (orderId) => {
-    await takeOrder(orderId);
+    await takeOrder(orderId, buildOptions());
   };
 
   const handleMarkReady = async (orderId) => {
@@ -164,11 +185,80 @@ export default function ManagerOrdersPage() {
     }
     const trimmedNote = markReadyNote.trim();
     const payload = trimmedNote ? { note: trimmedNote } : {};
-    await markReady(markReadyOrderId, payload);
+    await markReady(markReadyOrderId, payload, buildOptions());
     setMarkReadyOpen(false);
     setMarkReadyOrderId(null);
     setMarkReadyNote("");
   };
+
+  const handleSort = (key) => {
+    const nextDir =
+      sortBy === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    setSortBy(key);
+    setSortDir(nextDir);
+    setPage(0);
+    refreshAll(
+      buildOptions({ sortBy: key, sortDir: nextDir, offset: 0 })
+    ).catch(() => {});
+  };
+
+  const handleHideClosedChange = (event) => {
+    const nextValue = Boolean(event.target.checked);
+    setHideClosed(nextValue);
+    setPage(0);
+    refreshAll(buildOptions({ hideClosed: nextValue, offset: 0 })).catch(() => {});
+  };
+
+  const handleTabChange = (_, next) => {
+    setTab(next);
+    setPage(0);
+    const options = buildOptions({ offset: 0 });
+    if (next === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const handlePageChange = (_, nextPage) => {
+    setPage(nextPage);
+    const options = buildOptions({ offset: nextPage * rowsPerPage });
+    if (tab === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    const nextRows = Number(event.target.value);
+    setRowsPerPage(nextRows);
+    setPage(0);
+    const options = buildOptions({ limit: nextRows, offset: 0 });
+    if (tab === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const renderSortableHeader = (label, key, props = {}) => (
+    <TableCell
+      {...props}
+      sx={{
+        whiteSpace: "nowrap",
+        ...(props.sx || {}),
+      }}
+    >
+      <TableSortLabel
+        active={sortBy === key}
+        direction={sortBy === key ? sortDir : "asc"}
+        onClick={() => handleSort(key)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
 
   const statusValue = String(details?.order?.status || "").toLowerCase();
   const canManagerCancel =
@@ -183,7 +273,7 @@ export default function ManagerOrdersPage() {
         Manager Orders
       </Typography>
 
-      <Tabs value={tab} onChange={(_, next) => setTab(next)} sx={{ mb: 2 }}>
+      <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
         <Tab label={`Queue (${queue.length})`} />
         <Tab label={`My Orders (${my.length})`} />
       </Tabs>
@@ -197,7 +287,10 @@ export default function ManagerOrdersPage() {
       {error && !loading && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Alert severity="error">Failed to load orders.</Alert>
-          <Button variant="contained" onClick={() => refreshAll()}>
+          <Button
+            variant="contained"
+            onClick={() => refreshAll(buildOptions())}
+          >
             Retry
           </Button>
         </Stack>
@@ -212,10 +305,10 @@ export default function ManagerOrdersPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
+                {renderSortableHeader("Order #", "order_id")}
+                {renderSortableHeader("Created", "created_at")}
+                {renderSortableHeader("Status", "status")}
+                {renderSortableHeader("Total", "total_final", { align: "right" })}
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                   Actions
                 </TableCell>
@@ -261,54 +354,78 @@ export default function ManagerOrdersPage() {
           </Table>
         </TableContainer>
       )}
+      {!loading && !error && tab === 0 && queue.length > 0 && (
+        <TablePagination
+          component="div"
+          count={Number(queuePage?.total ?? queue.length)}
+          page={page}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
+      )}
 
       {!loading && !error && tab === 1 && my.length === 0 && (
         <Typography>No assigned orders yet</Typography>
       )}
 
-      {!loading && !error && tab === 1 && my.length > 0 && (
+      {!loading && !error && tab === 1 && (
         <Stack spacing={2} sx={{ mb: 2 }}>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel id="manager-orders-status-label">Status</InputLabel>
-              <Select
-                labelId="manager-orders-status-label"
-                label="Status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="new">New</MenuItem>
-                <MenuItem value="preparing">Preparing</MenuItem>
-                <MenuItem value="ready">Ready</MenuItem>
-                <MenuItem value="delivering">Delivering</MenuItem>
-                <MenuItem value="finished">Finished</MenuItem>
-                <MenuItem value="canceled">Canceled</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              size="small"
-              label="From"
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              size="small"
-              label="To"
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="outlined" onClick={clearFilters}>
-              Clear
-            </Button>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Showing {filteredMyOrders.length} of {my.length}
-          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hideClosed}
+                onChange={handleHideClosedChange}
+              />
+            }
+            label="Hide finished/cancelled"
+          />
+          {my.length > 0 && (
+            <>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel id="manager-orders-status-label">Status</InputLabel>
+                  <Select
+                    labelId="manager-orders-status-label"
+                    label="Status"
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                  >
+                    <MenuItem value="all">All</MenuItem>
+                    <MenuItem value="new">New</MenuItem>
+                    <MenuItem value="preparing">Preparing</MenuItem>
+                    <MenuItem value="ready">Ready</MenuItem>
+                    <MenuItem value="delivering">Delivering</MenuItem>
+                    <MenuItem value="finished">Finished</MenuItem>
+                    <MenuItem value="canceled">Canceled</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  label="From"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(event) => setDateFrom(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  size="small"
+                  label="To"
+                  type="date"
+                  value={dateTo}
+                  onChange={(event) => setDateTo(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <Button variant="outlined" onClick={clearFilters}>
+                  Clear
+                </Button>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Showing {filteredMyOrders.length} of {my.length}
+              </Typography>
+            </>
+          )}
         </Stack>
       )}
 
@@ -317,10 +434,10 @@ export default function ManagerOrdersPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
+                {renderSortableHeader("Order #", "order_id")}
+                {renderSortableHeader("Created", "created_at")}
+                {renderSortableHeader("Status", "status")}
+                {renderSortableHeader("Total", "total_final", { align: "right" })}
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                   Actions
                 </TableCell>
@@ -374,6 +491,17 @@ export default function ManagerOrdersPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+      {!loading && !error && tab === 1 && my.length > 0 && (
+        <TablePagination
+          component="div"
+          count={Number(myPage?.total ?? my.length)}
+          page={page}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
       )}
 
       <OrderDetailsDialog

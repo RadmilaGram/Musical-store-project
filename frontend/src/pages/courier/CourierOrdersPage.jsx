@@ -8,6 +8,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Checkbox,
+  FormControlLabel,
   Paper,
   Stack,
   Tab,
@@ -17,6 +19,8 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
+  TableSortLabel,
   TableRow,
   TextField,
   Typography,
@@ -29,6 +33,8 @@ export default function CourierOrdersPage() {
   const {
     queueOrders,
     myOrders,
+    queuePage,
+    myPage,
     loading,
     error,
     details,
@@ -46,6 +52,11 @@ export default function CourierOrdersPage() {
     loadHistory,
   } = useCourierOrders();
   const [tab, setTab] = useState(0);
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDir, setSortDir] = useState("desc");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [hideClosed, setHideClosed] = useState(true);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [openedOrderId, setOpenedOrderId] = useState(null);
   const [isHistoryOpen, setHistoryOpen] = useState(false);
@@ -54,17 +65,21 @@ export default function CourierOrdersPage() {
   const [finishOrderId, setFinishOrderId] = useState(null);
   const [finishNote, setFinishNote] = useState("");
 
-  useEffect(() => {
-    loadMy().catch(() => {});
-  }, [loadMy]);
+  const buildOptions = (overrides = {}) => ({
+    sortBy: overrides.sortBy ?? sortBy,
+    sortDir: overrides.sortDir ?? sortDir,
+    hideClosed: overrides.hideClosed ?? hideClosed,
+    limit: overrides.limit ?? rowsPerPage,
+    offset: overrides.offset ?? page * rowsPerPage,
+  });
 
   useEffect(() => {
     if (tab === 0) {
-      loadQueue().catch(() => {});
+      loadQueue(buildOptions()).catch(() => {});
     } else {
-      loadMy().catch(() => {});
+      loadMy(buildOptions()).catch(() => {});
     }
-  }, [tab, loadQueue, loadMy]);
+  }, [tab, loadQueue, loadMy, sortBy, sortDir, hideClosed]);
 
   const formatDate = (value) => {
     if (!value) return "-";
@@ -110,11 +125,85 @@ export default function CourierOrdersPage() {
     }
     const trimmedNote = finishNote.trim();
     const payload = trimmedNote ? { note: trimmedNote } : {};
-    await finishOrder(finishOrderId, payload);
+    await finishOrder(finishOrderId, payload, buildOptions());
     setFinishOpen(false);
     setFinishOrderId(null);
     setFinishNote("");
   };
+
+  const handleSort = (key) => {
+    const nextDir =
+      sortBy === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    setSortBy(key);
+    setSortDir(nextDir);
+    setPage(0);
+    const options = buildOptions({ sortBy: key, sortDir: nextDir, offset: 0 });
+    if (tab === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const handleHideClosedChange = (event) => {
+    const nextValue = Boolean(event.target.checked);
+    setHideClosed(nextValue);
+    setPage(0);
+    if (tab === 1) {
+      loadMy(buildOptions({ hideClosed: nextValue, offset: 0 })).catch(() => {});
+    }
+  };
+
+  const handleTabChange = (_, next) => {
+    setTab(next);
+    setPage(0);
+    const options = buildOptions({ offset: 0 });
+    if (next === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const handlePageChange = (_, nextPage) => {
+    setPage(nextPage);
+    const options = buildOptions({ offset: nextPage * rowsPerPage });
+    if (tab === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    const nextRows = Number(event.target.value);
+    setRowsPerPage(nextRows);
+    setPage(0);
+    const options = buildOptions({ limit: nextRows, offset: 0 });
+    if (tab === 0) {
+      loadQueue(options).catch(() => {});
+    } else {
+      loadMy(options).catch(() => {});
+    }
+  };
+
+  const renderSortableHeader = (label, key, props = {}) => (
+    <TableCell
+      {...props}
+      sx={{
+        whiteSpace: "nowrap",
+        ...(props.sx || {}),
+      }}
+    >
+      <TableSortLabel
+        active={sortBy === key}
+        direction={sortBy === key ? sortDir : "asc"}
+        onClick={() => handleSort(key)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
 
   return (
     <Container sx={{ py: 4 }}>
@@ -122,7 +211,7 @@ export default function CourierOrdersPage() {
         Courier Orders
       </Typography>
 
-      <Tabs value={tab} onChange={(_, next) => setTab(next)} sx={{ mb: 2 }}>
+      <Tabs value={tab} onChange={handleTabChange} sx={{ mb: 2 }}>
         <Tab label={`Queue (${queueItems.length})`} />
         <Tab label={`My Orders (${myItems.length})`} />
       </Tabs>
@@ -136,7 +225,10 @@ export default function CourierOrdersPage() {
       {error && !loading && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Alert severity="error">Failed to load orders.</Alert>
-          <Button variant="contained" onClick={() => refreshAll()}>
+          <Button
+            variant="contained"
+            onClick={() => refreshAll(buildOptions())}
+          >
             Retry
           </Button>
         </Stack>
@@ -151,10 +243,10 @@ export default function CourierOrdersPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
+                {renderSortableHeader("Order #", "order_id")}
+                {renderSortableHeader("Created", "created_at")}
+                {renderSortableHeader("Status", "status")}
+                {renderSortableHeader("Total", "total_final", { align: "right" })}
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                   Actions
                 </TableCell>
@@ -171,7 +263,9 @@ export default function CourierOrdersPage() {
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => takeOrder(order.id)}
+                      onClick={() =>
+                        takeOrder(order.id, { sortBy, sortDir })
+                      }
                       disabled={loading}
                     >
                       Take
@@ -183,9 +277,34 @@ export default function CourierOrdersPage() {
           </Table>
         </TableContainer>
       )}
+      {!loading && !error && tab === 0 && queueItems.length > 0 && (
+        <TablePagination
+          component="div"
+          count={Number(queuePage?.total ?? queueItems.length)}
+          page={page}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
+      )}
 
       {!loading && !error && tab === 1 && myItems.length === 0 && (
         <Typography>No assigned orders yet</Typography>
+      )}
+
+      {!loading && !error && tab === 1 && (
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hideClosed}
+                onChange={handleHideClosedChange}
+              />
+            }
+            label="Hide finished/cancelled"
+          />
+        </Stack>
       )}
 
       {!loading && !error && tab === 1 && myItems.length > 0 && (
@@ -193,10 +312,10 @@ export default function CourierOrdersPage() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
+                {renderSortableHeader("Order #", "order_id")}
+                {renderSortableHeader("Created", "created_at")}
+                {renderSortableHeader("Status", "status")}
+                {renderSortableHeader("Total", "total_final", { align: "right" })}
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                   Actions
                 </TableCell>
@@ -241,6 +360,17 @@ export default function CourierOrdersPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+      {!loading && !error && tab === 1 && myItems.length > 0 && (
+        <TablePagination
+          component="div"
+          count={Number(myPage?.total ?? myItems.length)}
+          page={page}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
       )}
       <OrderDetailsDialog
         open={isDialogOpen}

@@ -27,15 +27,46 @@ export async function cancelMyOrder(orderId) {
   return data;
 }
 
-export async function getManagerQueue() {
+export async function getManagerQueue(options = {}) {
+  const params = {};
+  if (options.sortBy) {
+    params.sortBy = options.sortBy;
+  }
+  if (options.sortDir) {
+    params.sortDir = options.sortDir;
+  }
+  if (options.limit !== undefined && options.limit !== null) {
+    params.limit = options.limit;
+  }
+  if (options.offset !== undefined && options.offset !== null) {
+    params.offset = options.offset;
+  }
   const { data } = await apiClient.get("/api/orders/manager/queue", {
+    params,
     withCredentials: true,
   });
   return data;
 }
 
-export async function getManagerMy() {
+export async function getManagerMy(options = {}) {
+  const params = {};
+  if (options.sortBy) {
+    params.sortBy = options.sortBy;
+  }
+  if (options.sortDir) {
+    params.sortDir = options.sortDir;
+  }
+  if (options.hideClosed) {
+    params.hideClosed = 1;
+  }
+  if (options.limit !== undefined && options.limit !== null) {
+    params.limit = options.limit;
+  }
+  if (options.offset !== undefined && options.offset !== null) {
+    params.offset = options.offset;
+  }
   const { data } = await apiClient.get("/api/orders/manager/my", {
+    params,
     withCredentials: true,
   });
   return data;
