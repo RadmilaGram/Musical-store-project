@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Alert,
   Button,
@@ -34,6 +37,18 @@ import { useAuth } from "../../hooks/useAuth";
 import CancelReasonDialog from "./CancelReasonDialog";
 import HistoryDialog from "./HistoryDialog";
 import OrderDetailsDialog from "../client/OrderDetailsDialog";
+
+const markReadySchema = yup.object({
+  note: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "note-min-if-present",
+      "Note must be at least 3 characters",
+      (value) => !value || value.length >= 3
+    )
+    .max(500, "Note must be at most 500 characters"),
+});
 
 export default function ManagerOrdersPage() {
   const { user } = useAuth();
@@ -81,7 +96,16 @@ export default function ManagerOrdersPage() {
   const [cancelOrderId, setCancelOrderId] = useState(null);
   const [isMarkReadyOpen, setMarkReadyOpen] = useState(false);
   const [markReadyOrderId, setMarkReadyOrderId] = useState(null);
-  const [markReadyNote, setMarkReadyNote] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors: markReadyErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(markReadySchema),
+    defaultValues: { note: "" },
+  });
 
   const buildOptions = (overrides = {}) => ({
     sortBy: overrides.sortBy ?? sortBy,
@@ -175,20 +199,24 @@ export default function ManagerOrdersPage() {
 
   const handleMarkReady = async (orderId) => {
     setMarkReadyOrderId(orderId);
-    setMarkReadyNote("");
+    reset({ note: "" });
     setMarkReadyOpen(true);
   };
 
-  const handleConfirmMarkReady = async () => {
+  const closeMarkReadyDialog = () => {
+    setMarkReadyOpen(false);
+    setMarkReadyOrderId(null);
+    reset({ note: "" });
+  };
+
+  const handleConfirmMarkReady = async ({ note }) => {
     if (!markReadyOrderId) {
       return;
     }
-    const trimmedNote = markReadyNote.trim();
+    const trimmedNote = note.trim();
     const payload = trimmedNote ? { note: trimmedNote } : {};
     await markReady(markReadyOrderId, payload, buildOptions());
-    setMarkReadyOpen(false);
-    setMarkReadyOrderId(null);
-    setMarkReadyNote("");
+    closeMarkReadyDialog();
   };
 
   const handleSort = (key) => {
@@ -552,11 +580,7 @@ export default function ManagerOrdersPage() {
       />
       <Dialog
         open={isMarkReadyOpen}
-        onClose={() => {
-          setMarkReadyOpen(false);
-          setMarkReadyOrderId(null);
-          setMarkReadyNote("");
-        }}
+        onClose={closeMarkReadyDialog}
         maxWidth="sm"
         fullWidth
       >
@@ -564,24 +588,19 @@ export default function ManagerOrdersPage() {
         <DialogContent dividers>
           <TextField
             label="Note (optional)"
-            value={markReadyNote}
-            onChange={(event) => setMarkReadyNote(event.target.value)}
+            {...register("note")}
+            error={Boolean(markReadyErrors.note)}
+            helperText={markReadyErrors.note?.message}
             fullWidth
             multiline
             minRows={3}
           />
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              setMarkReadyOpen(false);
-              setMarkReadyOrderId(null);
-              setMarkReadyNote("");
-            }}
-          >
+          <Button onClick={closeMarkReadyDialog}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleConfirmMarkReady}>
+          <Button variant="contained" onClick={handleSubmit(handleConfirmMarkReady)}>
             Mark Ready
           </Button>
         </DialogActions>

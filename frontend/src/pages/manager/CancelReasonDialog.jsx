@@ -10,6 +10,18 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+const cancelReasonSchema = yup.object({
+  reason: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Reason is required")
+    .min(3, "Reason must be at least 3 characters")
+    .max(500, "Reason must be at most 500 characters"),
+});
 
 export default function CancelReasonDialog({
   open,
@@ -19,24 +31,34 @@ export default function CancelReasonDialog({
   error,
   orderId,
 }) {
-  const [reason, setReason] = React.useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(cancelReasonSchema),
+    defaultValues: { reason: "" },
+  });
 
   React.useEffect(() => {
     if (!open) {
-      setReason("");
+      reset({ reason: "" });
     }
-  }, [open]);
+  }, [open, reset]);
 
-  const trimmedReason = reason.trim();
-  const canSubmit = trimmedReason.length > 0 && !loading;
+  const handleClose = () => {
+    reset({ reason: "" });
+    onClose();
+  };
 
-  const handleConfirm = async () => {
-    if (!canSubmit) return;
-    await onConfirm(trimmedReason);
+  const handleConfirm = async ({ reason }) => {
+    await onConfirm(reason.trim());
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>
         {orderId ? `Cancel Order #${orderId}` : "Cancel Order"}
       </DialogTitle>
@@ -45,25 +67,26 @@ export default function CancelReasonDialog({
           <Typography>Please provide a cancellation reason.</Typography>
           <TextField
             label="Reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            {...register("reason")}
             multiline
             minRows={3}
             required
             placeholder="Reason for cancellation"
+            error={Boolean(errors.reason)}
+            helperText={errors.reason?.message}
           />
           {error && <Alert severity="error">Failed to cancel order.</Alert>}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={handleClose} disabled={loading}>
           Close
         </Button>
         <Button
           variant="contained"
           color="error"
-          onClick={handleConfirm}
-          disabled={!canSubmit}
+          onClick={handleSubmit(handleConfirm)}
+          disabled={loading}
         >
           Cancel order
         </Button>

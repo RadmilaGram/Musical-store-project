@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Accordion,
   AccordionDetails,
@@ -12,6 +15,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Paper,
@@ -27,6 +31,102 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+
+const cancelReasonSchema = yup.object({
+  reason: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Reason is required")
+    .min(3, "Reason must be at least 3 characters")
+    .max(500, "Reason must be at most 500 characters"),
+});
+
+const internalCommentSchema = yup.object({
+  comment: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "comment-min-if-present",
+      "Comment must be at least 3 characters",
+      (value) => !value || value.length >= 3
+    )
+    .max(1000, "Comment must be at most 1000 characters"),
+});
+
+const assignManagerSchema = yup.object({
+  managerId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Manager is required")
+    .integer("Manager is required")
+    .positive("Manager is required")
+    .required("Manager is required"),
+});
+
+const statusChangeSchema = yup.object({
+  statusId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Status is required")
+    .integer("Status is required")
+    .positive("Status is required")
+    .required("Status is required"),
+  statusNote: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "status-note-min-if-present",
+      "Note must be at least 3 characters",
+      (value) => !value || value.length >= 3
+    )
+    .max(500, "Note must be at most 500 characters"),
+});
+
+const deliveryUpdateSchema = yup.object({
+  deliveryContact: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "delivery-contact-min-if-present",
+      "Contact name must be at least 2 characters",
+      (value) => !value || value.length >= 2
+    )
+    .max(100, "Contact name must be at most 100 characters"),
+  deliveryPhone: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "delivery-phone-min-if-present",
+      "Phone must be at least 7 characters",
+      (value) => !value || value.length >= 7
+    )
+    .max(30, "Phone must be at most 30 characters"),
+  deliveryAddress: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "delivery-address-min-if-present",
+      "Address must be at least 5 characters",
+      (value) => !value || value.length >= 5
+    )
+    .max(200, "Address must be at most 200 characters"),
+});
+
+const assignCourierSchema = yup.object({
+  courierId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Courier is required")
+    .integer("Courier is required")
+    .positive("Courier is required")
+    .required("Courier is required"),
+});
 
 export default function AdminOrderDetailsDialog({
   open,
@@ -51,18 +151,81 @@ export default function AdminOrderDetailsDialog({
   onUpdateDelivery,
   onUpdateComment,
 }) {
-  const [statusId, setStatusId] = useState("");
-  const [statusNote, setStatusNote] = useState("");
-  const [managerId, setManagerId] = useState("");
-  const [courierId, setCourierId] = useState("");
-  const [deliveryContact, setDeliveryContact] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryPhone, setDeliveryPhone] = useState("");
-  const [commentInternal, setCommentInternal] = useState("");
-  const [cancelReason, setCancelReason] = useState("");
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [actionsExpanded, setActionsExpanded] = useState(false);
   const lastHistoryOrderId = useRef(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(cancelReasonSchema),
+    defaultValues: { reason: "" },
+  });
+  const {
+    register: registerComment,
+    handleSubmit: handleCommentSubmit,
+    reset: resetComment,
+    formState: { errors: commentErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(internalCommentSchema),
+    defaultValues: { comment: "" },
+  });
+  const {
+    control: managerAssignControl,
+    handleSubmit: handleManagerAssignSubmit,
+    reset: resetManagerAssign,
+    formState: { errors: managerAssignErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(assignManagerSchema),
+    defaultValues: { managerId: "" },
+  });
+  const {
+    control: statusControl,
+    handleSubmit: handleStatusSubmit,
+    reset: resetStatusForm,
+    formState: { errors: statusErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(statusChangeSchema),
+    defaultValues: { statusId: "", statusNote: "" },
+  });
+  const selectedStatusId = useWatch({
+    control: statusControl,
+    name: "statusId",
+  });
+  const {
+    control: courierAssignControl,
+    handleSubmit: handleCourierAssignSubmit,
+    reset: resetCourierAssignForm,
+    formState: { errors: courierAssignErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(assignCourierSchema),
+    defaultValues: { courierId: "" },
+  });
+  const selectedCourierId = useWatch({
+    control: courierAssignControl,
+    name: "courierId",
+  });
+  const {
+    control: deliveryControl,
+    handleSubmit: handleDeliverySubmit,
+    reset: resetDeliveryForm,
+    formState: { errors: deliveryErrors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(deliveryUpdateSchema),
+    defaultValues: {
+      deliveryContact: "",
+      deliveryAddress: "",
+      deliveryPhone: "",
+    },
+  });
 
   const order = details?.order || null;
   const client = details?.client || null;
@@ -76,6 +239,27 @@ export default function AdminOrderDetailsDialog({
   const statusName = order?.statusName || "";
   const assignedManager = assignments?.manager || null;
   const assignedCourier = assignments?.courier || null;
+  const orderIdentity = order?.id ?? orderId ?? null;
+  const initialDialogValues = useMemo(
+    () => ({
+      statusId: order?.statusId ?? "",
+      managerId: assignedManager?.id ? String(assignedManager.id) : "",
+      courierId: assignedCourier?.id ?? "",
+      deliveryContact: delivery.contact_name ?? "",
+      deliveryAddress: delivery.delivery_address ?? "",
+      deliveryPhone: delivery.delivery_phone ?? "",
+      comment: details?.comments?.comment_internal ?? "",
+    }),
+    [
+      order?.statusId,
+      assignedManager?.id,
+      assignedCourier?.id,
+      delivery.contact_name,
+      delivery.delivery_address,
+      delivery.delivery_phone,
+      details?.comments?.comment_internal,
+    ]
+  );
 
   const isLoadingAny =
     detailsLoading ||
@@ -90,31 +274,49 @@ export default function AdminOrderDetailsDialog({
 
   useEffect(() => {
     if (!open) {
-      setStatusId("");
-      setStatusNote("");
-      setManagerId("");
-      setCourierId("");
-      setDeliveryContact("");
-      setDeliveryAddress("");
-      setDeliveryPhone("");
-      setCommentInternal("");
-      setCancelReason("");
+      resetCourierAssignForm({ courierId: "" });
+      resetDeliveryForm({
+        deliveryContact: "",
+        deliveryAddress: "",
+        deliveryPhone: "",
+      });
+      resetStatusForm({ statusId: "", statusNote: "" });
+      reset({ reason: "" });
+      resetComment({ comment: "" });
+      resetManagerAssign({ managerId: "" });
       setHistoryExpanded(false);
       setActionsExpanded(false);
       lastHistoryOrderId.current = null;
       return;
     }
 
-    if (order) {
-      setStatusId(order.statusId ?? "");
-    }
-    setManagerId(assignedManager?.id ?? "");
-    setCourierId(assignedCourier?.id ?? "");
-    setDeliveryContact(delivery.contact_name ?? "");
-    setDeliveryAddress(delivery.delivery_address ?? "");
-    setDeliveryPhone(delivery.delivery_phone ?? "");
-    setCommentInternal(details?.comments?.comment_internal ?? "");
-  }, [open, order, assignedManager, assignedCourier, delivery, details]);
+    resetStatusForm({
+      statusId: initialDialogValues.statusId,
+      statusNote: "",
+    });
+    resetManagerAssign({ managerId: initialDialogValues.managerId });
+    resetCourierAssignForm({
+      courierId: initialDialogValues.courierId
+        ? String(initialDialogValues.courierId)
+        : "",
+    });
+    resetDeliveryForm({
+      deliveryContact: initialDialogValues.deliveryContact,
+      deliveryAddress: initialDialogValues.deliveryAddress,
+      deliveryPhone: initialDialogValues.deliveryPhone,
+    });
+    resetComment({ comment: initialDialogValues.comment });
+  }, [
+    open,
+    orderIdentity,
+    initialDialogValues,
+    resetCourierAssignForm,
+    resetDeliveryForm,
+    resetStatusForm,
+    reset,
+    resetComment,
+    resetManagerAssign,
+  ]);
 
   useEffect(() => {
     if (!open || !orderId || !onFetchHistory) {
@@ -168,20 +370,22 @@ export default function AdminOrderDetailsDialog({
     setActionsExpanded(expanded);
   };
 
-  const handleStatusChange = async () => {
+  const handleStatusChange = async ({ statusId, statusNote }) => {
     if (!statusId || !onChangeStatus || actionLoading?.status) return;
-    await onChangeStatus(Number(statusId), statusNote || undefined);
-    setStatusNote("");
+    const trimmedStatusNote = (statusNote || "").trim();
+    await onChangeStatus(Number(statusId), trimmedStatusNote || undefined);
+    resetStatusForm({ statusId, statusNote: "" });
   };
 
-  const handleAssignManager = async () => {
-    if (!managerId || !onAssign || actionLoading?.assignManager) return;
+  const handleAssignManager = async ({ managerId }) => {
+    if (!onAssign || actionLoading?.assignManager) return;
     await onAssign(3, Number(managerId));
   };
 
-  const handleAssignCourier = async () => {
+  const handleAssignCourier = async ({ courierId }) => {
     if (!courierId || !onAssign || actionLoading?.assignCourier) return;
     await onAssign(4, Number(courierId));
+    resetCourierAssignForm({ courierId: "" });
   };
 
   const handleUnassignManager = async () => {
@@ -194,24 +398,38 @@ export default function AdminOrderDetailsDialog({
     await onUnassign(4);
   };
 
-  const handleSaveDelivery = async () => {
+  const handleSaveDelivery = async ({
+    deliveryContact,
+    deliveryAddress,
+    deliveryPhone,
+  }) => {
     if (!onUpdateDelivery || actionLoading?.delivery) return;
+    const payload = {
+      contact_name: (deliveryContact || "").trim(),
+      delivery_address: (deliveryAddress || "").trim(),
+      delivery_phone: (deliveryPhone || "").trim(),
+    };
     await onUpdateDelivery({
-      contact_name: deliveryContact,
-      delivery_address: deliveryAddress,
-      delivery_phone: deliveryPhone,
+      contact_name: payload.contact_name,
+      delivery_address: payload.delivery_address,
+      delivery_phone: payload.delivery_phone,
+    });
+    resetDeliveryForm({
+      deliveryContact: payload.contact_name,
+      deliveryAddress: payload.delivery_address,
+      deliveryPhone: payload.delivery_phone,
     });
   };
 
-  const handleSaveComment = async () => {
+  const handleSaveComment = async ({ comment }) => {
     if (!onUpdateComment || actionLoading?.comment) return;
-    await onUpdateComment(commentInternal);
+    await onUpdateComment(comment.trim());
   };
 
-  const handleCancelOrder = async () => {
-    if (!cancelReason || !onCancel || actionLoading?.cancel) return;
-    await onCancel(cancelReason);
-    setCancelReason("");
+  const handleCancelOrder = async ({ reason }) => {
+    if (!onCancel || actionLoading?.cancel) return;
+    await onCancel(reason.trim());
+    reset({ reason: "" });
   };
 
   return (
@@ -285,15 +503,14 @@ export default function AdminOrderDetailsDialog({
                 size="small"
                 multiline
                 minRows={2}
-                value={commentInternal}
-                onChange={(event) =>
-                  setCommentInternal(event.target.value)
-                }
+                {...registerComment("comment")}
+                error={Boolean(commentErrors.comment)}
+                helperText={commentErrors.comment?.message}
                 fullWidth
               />
               <Button
                 variant="contained"
-                onClick={handleSaveComment}
+                onClick={handleCommentSubmit(handleSaveComment)}
                 disabled={actionLoading?.comment}
                 startIcon={
                   actionLoading?.comment ? (
@@ -371,26 +588,35 @@ export default function AdminOrderDetailsDialog({
                           <InputLabel id="admin-order-manager-select">
                             Manager
                           </InputLabel>
-                          <Select
-                            labelId="admin-order-manager-select"
-                            label="Manager"
-                            value={managerId}
-                            onChange={(event) => setManagerId(event.target.value)}
-                            disabled={actionLoading?.assignManager}
-                          >
-                            <MenuItem value="">Select manager</MenuItem>
-                            {managers.map((manager) => (
-                              <MenuItem key={manager.id} value={manager.id}>
-                                {manager.full_name} ({manager.email})
-                              </MenuItem>
-                            ))}
-                          </Select>
+                          <Controller
+                            control={managerAssignControl}
+                            name="managerId"
+                            render={({ field }) => (
+                              <Select
+                                {...field}
+                                labelId="admin-order-manager-select"
+                                label="Manager"
+                                disabled={actionLoading?.assignManager}
+                                error={Boolean(managerAssignErrors.managerId)}
+                              >
+                                <MenuItem value="">Select manager</MenuItem>
+                                {managers.map((manager) => (
+                                  <MenuItem key={manager.id} value={String(manager.id)}>
+                                    {manager.full_name} ({manager.email})
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            )}
+                          />
+                          <FormHelperText error={Boolean(managerAssignErrors.managerId)}>
+                            {managerAssignErrors.managerId?.message || " "}
+                          </FormHelperText>
                         </FormControl>
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="contained"
-                            onClick={handleAssignManager}
-                            disabled={!managerId || actionLoading?.assignManager}
+                            onClick={handleManagerAssignSubmit(handleAssignManager)}
+                            disabled={actionLoading?.assignManager}
                             startIcon={
                               actionLoading?.assignManager ? (
                                 <CircularProgress size={16} />
@@ -425,26 +651,35 @@ export default function AdminOrderDetailsDialog({
                           <InputLabel id="admin-order-courier-select">
                             Courier
                           </InputLabel>
-                          <Select
-                            labelId="admin-order-courier-select"
-                            label="Courier"
-                            value={courierId}
-                            onChange={(event) => setCourierId(event.target.value)}
-                            disabled={actionLoading?.assignCourier}
-                          >
-                            <MenuItem value="">Select courier</MenuItem>
-                            {couriers.map((courier) => (
-                              <MenuItem key={courier.id} value={courier.id}>
-                                {courier.full_name} ({courier.email})
-                              </MenuItem>
-                            ))}
-                          </Select>
+                          <Controller
+                            control={courierAssignControl}
+                            name="courierId"
+                            render={({ field }) => (
+                              <Select
+                                {...field}
+                                labelId="admin-order-courier-select"
+                                label="Courier"
+                                disabled={actionLoading?.assignCourier}
+                                error={Boolean(courierAssignErrors.courierId)}
+                              >
+                                <MenuItem value="">Select courier</MenuItem>
+                                {couriers.map((courier) => (
+                                  <MenuItem key={courier.id} value={String(courier.id)}>
+                                    {courier.full_name} ({courier.email})
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            )}
+                          />
+                          <FormHelperText error={Boolean(courierAssignErrors.courierId)}>
+                            {courierAssignErrors.courierId?.message || " "}
+                          </FormHelperText>
                         </FormControl>
                         <Stack direction="row" spacing={1}>
                           <Button
                             variant="contained"
-                            onClick={handleAssignCourier}
-                            disabled={!courierId || actionLoading?.assignCourier}
+                            onClick={handleCourierAssignSubmit(handleAssignCourier)}
+                            disabled={!selectedCourierId || actionLoading?.assignCourier}
                             startIcon={
                               actionLoading?.assignCourier ? (
                                 <CircularProgress size={16} />
@@ -482,31 +717,49 @@ export default function AdminOrderDetailsDialog({
                         <InputLabel id="admin-order-status-select">
                           Status
                         </InputLabel>
-                        <Select
-                          labelId="admin-order-status-select"
-                          label="Status"
-                          value={statusId}
-                          onChange={(event) => setStatusId(event.target.value)}
-                          disabled={actionLoading?.status}
-                        >
-                          {statuses.map((status) => (
-                            <MenuItem key={status.id} value={status.id}>
-                              {status.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
+                        <Controller
+                          control={statusControl}
+                          name="statusId"
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              labelId="admin-order-status-select"
+                              label="Status"
+                              disabled={actionLoading?.status}
+                              error={Boolean(statusErrors.statusId)}
+                            >
+                              {statuses.map((status) => (
+                                <MenuItem key={status.id} value={status.id}>
+                                  {status.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          )}
+                        />
+                        {statusErrors.statusId && (
+                          <FormHelperText error>
+                            {statusErrors.statusId.message}
+                          </FormHelperText>
+                        )}
                       </FormControl>
-                      <TextField
-                        size="small"
-                        label="Note (optional)"
-                        value={statusNote}
-                        onChange={(event) => setStatusNote(event.target.value)}
-                        fullWidth
+                      <Controller
+                        control={statusControl}
+                        name="statusNote"
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            size="small"
+                            label="Note (optional)"
+                            error={Boolean(statusErrors.statusNote)}
+                            helperText={statusErrors.statusNote?.message}
+                            fullWidth
+                          />
+                        )}
                       />
                       <Button
                         variant="contained"
-                        onClick={handleStatusChange}
-                        disabled={!statusId || actionLoading?.status}
+                        onClick={handleStatusSubmit(handleStatusChange)}
+                        disabled={!selectedStatusId || actionLoading?.status}
                         startIcon={
                           actionLoading?.status ? (
                             <CircularProgress size={16} />
@@ -523,29 +776,50 @@ export default function AdminOrderDetailsDialog({
                   <Stack spacing={2}>
                     <Typography variant="h6">Delivery</Typography>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                      <TextField
-                        size="small"
-                        label="Contact name"
-                        value={deliveryContact}
-                        onChange={(event) => setDeliveryContact(event.target.value)}
+                      <Controller
+                        control={deliveryControl}
+                        name="deliveryContact"
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            size="small"
+                            label="Contact name"
+                            error={Boolean(deliveryErrors.deliveryContact)}
+                            helperText={deliveryErrors.deliveryContact?.message}
+                          />
+                        )}
                       />
-                      <TextField
-                        size="small"
-                        label="Phone"
-                        value={deliveryPhone}
-                        onChange={(event) => setDeliveryPhone(event.target.value)}
+                      <Controller
+                        control={deliveryControl}
+                        name="deliveryPhone"
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            size="small"
+                            label="Phone"
+                            error={Boolean(deliveryErrors.deliveryPhone)}
+                            helperText={deliveryErrors.deliveryPhone?.message}
+                          />
+                        )}
                       />
                     </Stack>
-                    <TextField
-                      size="small"
-                      label="Address"
-                      value={deliveryAddress}
-                      onChange={(event) => setDeliveryAddress(event.target.value)}
-                      fullWidth
+                    <Controller
+                      control={deliveryControl}
+                      name="deliveryAddress"
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          size="small"
+                          label="Address"
+                          error={Boolean(deliveryErrors.deliveryAddress)}
+                          helperText={deliveryErrors.deliveryAddress?.message}
+                          fullWidth
+                        />
+                      )}
                     />
                     <Button
                       variant="contained"
-                      onClick={handleSaveDelivery}
+                      onClick={handleDeliverySubmit(handleSaveDelivery)}
                       disabled={actionLoading?.delivery}
                       startIcon={
                         actionLoading?.delivery ? (
@@ -564,17 +838,18 @@ export default function AdminOrderDetailsDialog({
                     <TextField
                       size="small"
                       label="Reason"
-                      value={cancelReason}
-                      onChange={(event) => setCancelReason(event.target.value)}
+                      {...register("reason")}
                       fullWidth
                       multiline
                       minRows={2}
+                      error={Boolean(errors.reason)}
+                      helperText={errors.reason?.message}
                     />
                     <Button
                       variant="contained"
                       color="error"
-                      onClick={handleCancelOrder}
-                      disabled={!cancelReason || actionLoading?.cancel}
+                      onClick={handleSubmit(handleCancelOrder)}
+                      disabled={actionLoading?.cancel}
                       startIcon={
                         actionLoading?.cancel ? (
                           <CircularProgress size={16} />

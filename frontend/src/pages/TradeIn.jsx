@@ -1,6 +1,8 @@
 // src/pages/TradeIn.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { Box, Stack, Typography, Button, IconButton, Tooltip } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import SelectField from "../components/formFields/SelectField";
@@ -17,6 +19,40 @@ import { useProductById } from "../use-cases/products/useProductById";
 import { computeTradeInOffer } from "../use-cases/trade-in/computeTradeInOffer";
 import { API_URL } from "../utils/apiService/ApiService";
 import PageContainer from "../components/ui/PageContainer";
+
+const tradeInSchema = yup.object({
+  typeId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Product type is required")
+    .integer("Product type is required")
+    .positive("Product type is required")
+    .required("Product type is required"),
+  brandId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Brand is required")
+    .integer("Brand is required")
+    .positive("Brand is required")
+    .required("Brand is required"),
+  productId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Product is required")
+    .integer("Product is required")
+    .positive("Product is required")
+    .required("Product is required"),
+  conditionCode: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Condition is required"),
+});
 
 export default function TradeIn() {
   const { types } = useProductTypes();
@@ -37,7 +73,15 @@ export default function TradeIn() {
   const failedImagesRef = useRef(new Set());
   const [, setImageErrorTick] = useState(0);
 
-  const { control, handleSubmit, watch, reset } = useForm({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(tradeInSchema),
     defaultValues: {
       typeId: "",
       brandId: "",
@@ -196,7 +240,13 @@ export default function TradeIn() {
             name="typeId"
             label="Product Type"
             options={availableTypes.map((t) => ({ id: t.id, name: t.name }))}
+            error={Boolean(errors.typeId)}
           />
+          {errors.typeId && (
+            <Typography variant="caption" color="error">
+              {errors.typeId.message}
+            </Typography>
+          )}
 
           <SelectField
             control={control}
@@ -204,7 +254,13 @@ export default function TradeIn() {
             label="Brand"
             options={filteredBrands.map((b) => ({ id: b.id, name: b.name }))}
             disabled={!typeId}
+            error={Boolean(errors.brandId)}
           />
+          {errors.brandId && (
+            <Typography variant="caption" color="error">
+              {errors.brandId.message}
+            </Typography>
+          )}
 
           <SelectField
             control={control}
@@ -212,7 +268,13 @@ export default function TradeIn() {
             label="Product"
             options={filteredProducts.map((p) => ({ id: p.id, name: p.name }))}
             disabled={!brandId}
+            error={Boolean(errors.productId)}
           />
+          {errors.productId && (
+            <Typography variant="caption" color="error">
+              {errors.productId.message}
+            </Typography>
+          )}
 
           <SelectField
             control={control}
@@ -233,7 +295,13 @@ export default function TradeIn() {
             }
             options={conditionOptions}
             disabled={!productId || !conditionOptions.length}
+            error={Boolean(errors.conditionCode)}
           />
+          {errors.conditionCode && (
+            <Typography variant="caption" color="error">
+              {errors.conditionCode.message}
+            </Typography>
+          )}
 
           {selectedCatalogEntry && (
             <TradeInProductPreview

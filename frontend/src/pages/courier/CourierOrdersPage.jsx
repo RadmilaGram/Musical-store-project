@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Alert,
   Button,
@@ -28,6 +31,18 @@ import {
 import { useCourierOrders } from "../../use-cases/useCourierOrders";
 import HistoryDialog from "../manager/HistoryDialog";
 import OrderDetailsDialog from "../client/OrderDetailsDialog";
+
+const finishNoteSchema = yup.object({
+  note: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .test(
+      "min-if-nonempty",
+      "Note must be at least 3 characters",
+      (value) => !value || value.length >= 3
+    )
+    .max(500, "Note must be at most 500 characters"),
+});
 
 export default function CourierOrdersPage() {
   const {
@@ -63,7 +78,16 @@ export default function CourierOrdersPage() {
   const [historyOrderId, setHistoryOrderId] = useState(null);
   const [isFinishOpen, setFinishOpen] = useState(false);
   const [finishOrderId, setFinishOrderId] = useState(null);
-  const [finishNote, setFinishNote] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(finishNoteSchema),
+    defaultValues: { note: "" },
+  });
 
   const buildOptions = (overrides = {}) => ({
     sortBy: overrides.sortBy ?? sortBy,
@@ -115,20 +139,20 @@ export default function CourierOrdersPage() {
       return;
     }
     setFinishOrderId(orderId);
-    setFinishNote("");
+    reset({ note: "" });
     setFinishOpen(true);
   };
 
-  const handleConfirmFinish = async () => {
+  const handleConfirmFinish = async ({ note }) => {
     if (!finishOrderId) {
       return;
     }
-    const trimmedNote = finishNote.trim();
+    const trimmedNote = note.trim();
     const payload = trimmedNote ? { note: trimmedNote } : {};
     await finishOrder(finishOrderId, payload, buildOptions());
     setFinishOpen(false);
     setFinishOrderId(null);
-    setFinishNote("");
+    reset({ note: "" });
   };
 
   const handleSort = (key) => {
@@ -402,7 +426,7 @@ export default function CourierOrdersPage() {
         onClose={() => {
           setFinishOpen(false);
           setFinishOrderId(null);
-          setFinishNote("");
+          reset({ note: "" });
         }}
         maxWidth="sm"
         fullWidth
@@ -410,12 +434,13 @@ export default function CourierOrdersPage() {
         <DialogTitle>Finish delivery</DialogTitle>
         <DialogContent dividers>
           <TextField
-            label="Note (optional)"
-            value={finishNote}
-            onChange={(event) => setFinishNote(event.target.value)}
+            label="Note"
+            {...register("note")}
             fullWidth
             multiline
             minRows={3}
+            error={Boolean(errors.note)}
+            helperText={errors.note?.message}
           />
         </DialogContent>
         <DialogActions>
@@ -423,12 +448,12 @@ export default function CourierOrdersPage() {
             onClick={() => {
               setFinishOpen(false);
               setFinishOrderId(null);
-              setFinishNote("");
+              reset({ note: "" });
             }}
           >
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleConfirmFinish}>
+          <Button variant="contained" onClick={handleSubmit(handleConfirmFinish)}>
             Finish
           </Button>
         </DialogActions>

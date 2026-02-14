@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Alert,
   Box,
@@ -19,6 +22,28 @@ import { useProductTypesCrud } from "../../../../features/admin/productTypes/use
 import { useSpecialFieldsCrud } from "../../../../features/admin/specialFields/useSpecialFieldsCrud";
 import { useProductTypeSpecialFieldAssignment } from "../../../../features/admin/productTypeSpecialFields/useProductTypeSpecialFieldAssignment";
 
+const productTypeSpecialFieldsSchema = yup.object({
+  productTypeId: yup
+    .number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? NaN : Number(originalValue)
+    )
+    .typeError("Product type is required")
+    .integer("Product type is required")
+    .positive("Product type is required")
+    .required("Product type is required"),
+  assignedFieldIds: yup
+    .array()
+    .of(
+      yup
+        .number()
+        .transform((value, originalValue) => Number(originalValue))
+        .typeError("Invalid field id")
+        .integer("Invalid field id")
+        .positive("Invalid field id")
+    ),
+});
+
 export default function ProductTypeSpecialFieldsSection() {
   const { items: productTypes, ensureLoaded: ensureProductTypes } =
     useProductTypesCrud();
@@ -33,12 +58,32 @@ export default function ProductTypeSpecialFieldsSection() {
     loadAssignments,
     saveAssignments,
   } = useProductTypeSpecialFieldAssignment();
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(productTypeSpecialFieldsSchema),
+    defaultValues: {
+      productTypeId: "",
+      assignedFieldIds: [],
+    },
+  });
+  const productTypeId = useWatch({
+    control,
+    name: "productTypeId",
+  });
+  const assignedFieldIdsForm = useWatch({
+    control,
+    name: "assignedFieldIds",
+  }) || [];
 
-  const [selectedTypeId, setSelectedTypeId] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarError, setSnackbarError] = useState("");
-  const [localAssignedIds, setLocalAssignedIds] = useState([]);
   const [pendingTypeId, setPendingTypeId] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -48,30 +93,31 @@ export default function ProductTypeSpecialFieldsSection() {
   }, [ensureProductTypes, ensureSpecialFields]);
 
   useEffect(() => {
-    setLocalAssignedIds(assignedFieldIds);
-  }, [assignedFieldIds]);
+    setValue("assignedFieldIds", assignedFieldIds, { shouldDirty: false });
+  }, [assignedFieldIds, setValue]);
 
   useEffect(() => {
-    if (selectedTypeId) {
-      loadAssignments(selectedTypeId).catch(() => {});
+    if (productTypeId) {
+      loadAssignments(productTypeId).catch(() => {});
     } else {
-      setLocalAssignedIds([]);
+      setValue("assignedFieldIds", [], { shouldDirty: false });
     }
-  }, [selectedTypeId, loadAssignments]);
+  }, [productTypeId, loadAssignments, setValue]);
 
   const hasChanges = useMemo(() => {
-    if (!selectedTypeId) return false;
-    if (localAssignedIds.length !== assignedFieldIds.length) return true;
-    const a = [...localAssignedIds].sort();
+    if (!productTypeId) return false;
+    if (assignedFieldIdsForm.length !== assignedFieldIds.length) return true;
+    const a = [...assignedFieldIdsForm].sort();
     const b = [...assignedFieldIds].sort();
     return a.some((id, idx) => id !== b[idx]);
-  }, [selectedTypeId, localAssignedIds, assignedFieldIds]);
+  }, [productTypeId, assignedFieldIdsForm, assignedFieldIds]);
 
   const handleTypeChangeConfirmed = useCallback(() => {
     setShowConfirm(false);
-    setSelectedTypeId(pendingTypeId);
+    setValue("productTypeId", pendingTypeId, { shouldDirty: false });
+    setValue("assignedFieldIds", [], { shouldDirty: false });
     setPendingTypeId("");
-  }, [pendingTypeId]);
+  }, [pendingTypeId, setValue]);
 
   const handleTypeChangeCanceled = useCallback(() => {
     setShowConfirm(false);
@@ -85,10 +131,11 @@ export default function ProductTypeSpecialFieldsSection() {
         setPendingTypeId(newTypeId);
         setShowConfirm(true);
       } else {
-        setSelectedTypeId(newTypeId);
+        setValue("productTypeId", newTypeId, { shouldDirty: false });
+        setValue("assignedFieldIds", [], { shouldDirty: false });
       }
     },
-    [hasChanges]
+    [hasChanges, setValue]
   );
 
   const handleSearchChange = useCallback((event) => {
@@ -103,41 +150,27 @@ export default function ProductTypeSpecialFieldsSection() {
       : base;
   }, [specialFields, searchValue]);
 
-  const rows = useMemo(
-    () =>
-      filteredFields.map((field) => ({
-        ...field,
-        checked: localAssignedIds.includes(field.id),
-      })),
-    [filteredFields, localAssignedIds]
-  );
-
-  const handleToggle = useCallback(
-    (fieldId, checked) => {
-      if (checked) {
-        if (!localAssignedIds.includes(fieldId)) {
-          setLocalAssignedIds([...localAssignedIds, fieldId]);
-        }
-      } else {
-        if (localAssignedIds.includes(fieldId)) {
-          setLocalAssignedIds(localAssignedIds.filter((id) => id !== fieldId));
-        }
-      }
-    },
-    [localAssignedIds]
-  );
-
-  const handleSave = useCallback(async () => {
-    if (!selectedTypeId) {
+  const handleSave = useCallback(async ({ productTypeId, assignedFieldIds }) => {
+    if (!productTypeId) {
       return;
     }
+    const normalizedAssignedIds = (assignedFieldIds || [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
     try {
-      await saveAssignments(selectedTypeId, localAssignedIds);
+      await saveAssignments(productTypeId, normalizedAssignedIds);
+      reset(
+        {
+          productTypeId,
+          assignedFieldIds: normalizedAssignedIds,
+        },
+        { keepDirty: false }
+      );
       setSnackbarMessage("Assignments saved");
     } catch {
       setSnackbarError("Failed to save assignments");
     }
-  }, [selectedTypeId, localAssignedIds, saveAssignments]);
+  }, [saveAssignments, reset]);
 
   const columns = useMemo(
     () => [
@@ -146,18 +179,36 @@ export default function ProductTypeSpecialFieldsSection() {
         headerName: "",
         width: 80,
         renderCell: (params) => (
-          <input
-            type="checkbox"
-            checked={params.row.checked}
-            onChange={(e) => handleToggle(params.row.id, e.target.checked)}
-            disabled={!selectedTypeId || saving}
+          <Controller
+            name="assignedFieldIds"
+            control={control}
+            render={({ field }) => {
+              const currentIds = Array.isArray(field.value) ? field.value : [];
+              const isChecked = currentIds.includes(params.row.id);
+              return (
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const nextIds = checked
+                      ? currentIds.includes(params.row.id)
+                        ? currentIds
+                        : [...currentIds, params.row.id]
+                      : currentIds.filter((id) => id !== params.row.id);
+                    field.onChange(nextIds);
+                  }}
+                  disabled={!productTypeId || saving}
+                />
+              );
+            }}
           />
         ),
       },
       { field: "name", headerName: "Name", flex: 1 },
       { field: "datatypeName", headerName: "Datatype", flex: 1 },
     ],
-    [handleToggle, selectedTypeId, saving]
+    [control, productTypeId, saving]
   );
 
   return (
@@ -168,25 +219,33 @@ export default function ProductTypeSpecialFieldsSection() {
         onSearchChange={handleSearchChange}
         onCreateClick={() => {}}
         onRefreshClick={() =>
-          selectedTypeId ? loadAssignments(selectedTypeId) : Promise.resolve()
+          productTypeId ? loadAssignments(productTypeId) : Promise.resolve()
         }
         isRefreshing={loading}
         disableCreate
         filtersSlot={
-          <TextField
-            select
-            fullWidth
-            label="Product Type"
-            value={selectedTypeId}
-            onChange={handleTypeChange}
-          >
-            <MenuItem value="">Select product type</MenuItem>
-            {productTypes.map((type) => (
-              <MenuItem key={type.id} value={type.id}>
-                {type.name}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Controller
+            name="productTypeId"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                select
+                fullWidth
+                label="Product Type"
+                onChange={handleTypeChange}
+                error={Boolean(errors.productTypeId)}
+                helperText={errors.productTypeId?.message}
+              >
+                <MenuItem value="">Select product type</MenuItem>
+                {productTypes.map((type) => (
+                  <MenuItem key={type.id} value={type.id}>
+                    {type.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
         }
       />
 
@@ -196,12 +255,12 @@ export default function ProductTypeSpecialFieldsSection() {
         </Alert>
       )}
 
-      {!selectedTypeId ? (
+      {!productTypeId ? (
         <Alert severity="info">Select a product type to manage fields.</Alert>
       ) : (
         <>
           <CrudTable
-            rows={rows}
+            rows={filteredFields}
             columns={columns}
             loading={loading || saving}
           />
@@ -215,8 +274,8 @@ export default function ProductTypeSpecialFieldsSection() {
           >
             <Button
               variant="contained"
-              onClick={handleSave}
-              disabled={!hasChanges || saving || !selectedTypeId}
+              onClick={handleSubmit(handleSave)}
+              disabled={!hasChanges || saving || !productTypeId}
               startIcon={saving ? <CircularProgress size={18} /> : null}
             >
               Save

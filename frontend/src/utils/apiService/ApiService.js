@@ -38,67 +38,6 @@ export const getProdSatus = async () => {
   }
 };
 
-// read all special fields types
-export const getSpecialFieldDT = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/api/SpecialFieldDT`);
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при получении типа данных специальных полей:", error);
-    throw error;
-  }
-};
-
-// read all special fields
-export const getSpecialField = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/api/SpecialField`);
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при получении специальных полей:", error);
-    throw error;
-  }
-};
-
-// read all special fields
-export const getSpecialFieldWithDefaultValues = async () => {
-  try {
-    const response = await axios.get(
-      `${API_URL}/api/SpecialFieldWithDefaultValues`
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при получении специальных полей:", error);
-    throw error;
-  }
-};
-
-// read all special fields
-export const getSpecialFieldValues = async (fieldID) => {
-  try {
-    const response = await axios.get(`${API_URL}/api/SpecialFieldValues`, {
-      params: { fieldID },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при получении специальных полей:", error);
-    throw error;
-  }
-};
-
-// read all special fields
-export const getTypeSpecialFields = async (typeID) => {
-  try {
-    const response = await axios.get(`${API_URL}/api/TypeSpecialFields`, {
-      params: { typeID },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Ошибка при получении специальных полей:", error);
-    throw error;
-  }
-};
-
 // Adding part ---------------------------------------------------------------------------------------
 
 // add Brand

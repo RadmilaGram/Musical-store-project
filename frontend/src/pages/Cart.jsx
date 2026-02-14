@@ -1,5 +1,8 @@
 // src/pages/Cart.jsx
 import React from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import {
   Box,
   Stack,
@@ -24,6 +27,31 @@ import { useAuth } from "../hooks/useAuth";
 import PageContainer from "../components/ui/PageContainer";
 import PageTitle from "../components/ui/PageTitle";
 
+const deliverySchema = yup.object({
+  contactName: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Contact name is required")
+    .min(2, "Contact name must be at least 2 characters")
+    .max(100, "Contact name must be at most 100 characters"),
+  deliveryPhone: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Phone is required")
+    .min(7, "Phone must be at least 7 characters")
+    .max(30, "Phone must be at most 30 characters"),
+  deliveryAddress: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .required("Delivery address is required")
+    .min(5, "Delivery address must be at least 5 characters")
+    .max(200, "Delivery address must be at most 200 characters"),
+  commentClient: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : ""))
+    .max(500, "Comment must be at most 500 characters"),
+});
+
 export default function Cart() {
   const { items: cartItems, clear, total: purchaseTotal } = useCart();
   const { items: tradeInItems, reset: resetTradeIn } = useTradeIn();
@@ -31,12 +59,20 @@ export default function Cart() {
   const { user, token } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [deliveryOpen, setDeliveryOpen] = React.useState(false);
-  const [deliveryErrors, setDeliveryErrors] = React.useState({});
-  const [delivery, setDelivery] = React.useState({
-    contactName: "",
-    deliveryPhone: "",
-    deliveryAddress: "",
-    commentClient: "",
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    mode: "onSubmit",
+    resolver: yupResolver(deliverySchema),
+    defaultValues: {
+      contactName: "",
+      deliveryPhone: "",
+      deliveryAddress: "",
+      commentClient: "",
+    },
   });
   const [snackbar, setSnackbar] = React.useState({
     open: false,
@@ -63,35 +99,38 @@ export default function Cart() {
   const finalPrice = purchaseTotal - effectiveDiscount;
 
   const openDeliveryDialog = () => {
-    setDelivery((prev) => ({
+    reset({
       contactName:
-        prev.contactName ||
         user?.full_name ||
         user?.name ||
         user?.fullName ||
         "",
       deliveryPhone:
-        prev.deliveryPhone || user?.phone || user?.phone_number || "",
-      deliveryAddress: prev.deliveryAddress || user?.address || "",
-      commentClient: prev.commentClient || "",
-    }));
-    setDeliveryErrors({});
+        user?.phone || user?.phone_number || "",
+      deliveryAddress: user?.address || "",
+      commentClient: "",
+    });
     setDeliveryOpen(true);
   };
 
-  const handlePlaceOrder = async () => {
+  const handleCloseDeliveryDialog = () => {
+    setDeliveryOpen(false);
+    reset({
+      contactName: "",
+      deliveryPhone: "",
+      deliveryAddress: "",
+      commentClient: "",
+    });
+  };
+
+  const handlePlaceOrder = async (values) => {
     if (loading) return;
-    const errors = {};
-    if (!delivery.deliveryPhone?.trim()) {
-      errors.deliveryPhone = "Phone is required";
-    }
-    if (!delivery.deliveryAddress?.trim()) {
-      errors.deliveryAddress = "Address is required";
-    }
-    if (Object.keys(errors).length > 0) {
-      setDeliveryErrors(errors);
-      return;
-    }
+    const deliveryValues = {
+      contactName: values.contactName.trim(),
+      deliveryPhone: values.deliveryPhone.trim(),
+      deliveryAddress: values.deliveryAddress.trim(),
+      commentClient: (values.commentClient || "").trim(),
+    };
 
     setLoading(true);
     try {
@@ -103,10 +142,10 @@ export default function Cart() {
           quantity: item.quantity ?? 1,
         })),
         delivery: {
-          contactName: delivery.contactName,
-          deliveryPhone: delivery.deliveryPhone,
-          deliveryAddress: delivery.deliveryAddress,
-          commentClient: delivery.commentClient,
+          contactName: deliveryValues.contactName,
+          deliveryPhone: deliveryValues.deliveryPhone,
+          deliveryAddress: deliveryValues.deliveryAddress,
+          commentClient: deliveryValues.commentClient,
         },
         tradeInItems: tradeInItems.map((item) => ({
           productId:
@@ -129,7 +168,7 @@ export default function Cart() {
       }
       clear();
       resetTradeIn();
-      setDeliveryOpen(false);
+      handleCloseDeliveryDialog();
       setSnackbar({
         open: true,
         message: "Заказ принят",
@@ -148,10 +187,6 @@ export default function Cart() {
       setLoading(false);
     }
   };
-
-  const isDeliveryValid =
-    Boolean(delivery.deliveryPhone?.trim()) &&
-    Boolean(delivery.deliveryAddress?.trim());
 
   return (
     <PageContainer>
@@ -233,7 +268,7 @@ export default function Cart() {
 
         <Dialog
           open={deliveryOpen}
-          onClose={() => setDeliveryOpen(false)}
+          onClose={handleCloseDeliveryDialog}
           fullWidth
           maxWidth="sm"
         >
@@ -242,40 +277,24 @@ export default function Cart() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
                 label="Contact name"
-                value={delivery.contactName}
-                onChange={(e) =>
-                  setDelivery((prev) => ({
-                    ...prev,
-                    contactName: e.target.value,
-                  }))
-                }
+                {...register("contactName")}
+                error={Boolean(errors.contactName)}
+                helperText={errors.contactName?.message}
                 fullWidth
               />
               <TextField
                 label="Phone"
-                value={delivery.deliveryPhone}
-                onChange={(e) =>
-                  setDelivery((prev) => ({
-                    ...prev,
-                    deliveryPhone: e.target.value,
-                  }))
-                }
-                error={Boolean(deliveryErrors.deliveryPhone)}
-                helperText={deliveryErrors.deliveryPhone}
+                {...register("deliveryPhone")}
+                error={Boolean(errors.deliveryPhone)}
+                helperText={errors.deliveryPhone?.message}
                 required
                 fullWidth
               />
               <TextField
                 label="Delivery address"
-                value={delivery.deliveryAddress}
-                onChange={(e) =>
-                  setDelivery((prev) => ({
-                    ...prev,
-                    deliveryAddress: e.target.value,
-                  }))
-                }
-                error={Boolean(deliveryErrors.deliveryAddress)}
-                helperText={deliveryErrors.deliveryAddress}
+                {...register("deliveryAddress")}
+                error={Boolean(errors.deliveryAddress)}
+                helperText={errors.deliveryAddress?.message}
                 required
                 fullWidth
                 multiline
@@ -283,13 +302,9 @@ export default function Cart() {
               />
               <TextField
                 label="Comment (optional)"
-                value={delivery.commentClient}
-                onChange={(e) =>
-                  setDelivery((prev) => ({
-                    ...prev,
-                    commentClient: e.target.value,
-                  }))
-                }
+                {...register("commentClient")}
+                error={Boolean(errors.commentClient)}
+                helperText={errors.commentClient?.message}
                 fullWidth
                 multiline
                 minRows={2}
@@ -297,11 +312,11 @@ export default function Cart() {
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDeliveryOpen(false)}>Cancel</Button>
+            <Button onClick={handleCloseDeliveryDialog}>Cancel</Button>
             <Button
               variant="contained"
-              onClick={handlePlaceOrder}
-              disabled={loading || !isDeliveryValid}
+              onClick={handleSubmit(handlePlaceOrder)}
+              disabled={loading}
               startIcon={
                 loading ? <CircularProgress color="inherit" size={16} /> : null
               }
