@@ -427,6 +427,29 @@ function createOrdersAdminRouter(db) {
         return res.status(404).json({ ok: false, message: "Order not found" });
       }
 
+      if (roleId === 3) {
+        const managerAllowedStatusRows = await query(
+          "SELECT id FROM order_status WHERE name IN ('new', 'preparing')"
+        );
+        const managerAllowedStatusIds = new Set(
+          (managerAllowedStatusRows || []).map((row) => Number(row.id))
+        );
+        if (managerAllowedStatusIds.size < 2) {
+          await rollback();
+          return res
+            .status(500)
+            .json({ ok: false, message: "Missing order status" });
+        }
+        if (!managerAllowedStatusIds.has(Number(orderRow.statusId))) {
+          await rollback();
+          return res.status(400).json({
+            ok: false,
+            message:
+              "Manager can be assigned only when order status is new or preparing",
+          });
+        }
+      }
+
       if (roleId === 4) {
         const readyStatusRows = await query(
           "SELECT id FROM order_status WHERE name = 'ready' LIMIT 1"
@@ -1104,40 +1127,78 @@ function createOrdersAdminRouter(db) {
         [orderId]
       );
 
-      const assignmentsRows = await query(
-        `
-        SELECT
-          oa.user_role_id,
-          u.id AS userId,
-          u.full_name AS userFullName,
-          u.email AS userEmail
-        FROM order_assignments oa
-        JOIN users u ON u.id = oa.user_id
-        WHERE oa.order_id = ?
-          AND oa.active = 1
-          AND oa.user_role_id IN (3, 4)
-        `,
-        [orderId]
-      );
-
       const assignments = {
         manager: null,
         courier: null,
       };
-
-      assignmentsRows.forEach((row) => {
-        const payload = {
-          id: row.userId,
-          full_name: row.userFullName,
-          email: row.userEmail,
+      const assignmentsRows = await query(
+        `
+        SELECT
+          m.id AS managerId,
+          m.full_name AS managerFullName,
+          m.email AS managerEmail,
+          c.id AS courierId,
+          c.full_name AS courierFullName,
+          c.email AS courierEmail
+        FROM orders o
+        LEFT JOIN users m ON m.id = COALESCE(
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+              AND oa.active = 1
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          )
+        )
+        LEFT JOIN users c ON c.id = COALESCE(
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 4
+              AND oa.active = 1
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 4
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          )
+        )
+        WHERE o.id = ?
+        LIMIT 1
+        `,
+        [orderId]
+      );
+      const assignmentsRow = assignmentsRows?.[0];
+      if (assignmentsRow?.managerId) {
+        assignments.manager = {
+          id: assignmentsRow.managerId,
+          full_name: assignmentsRow.managerFullName,
+          email: assignmentsRow.managerEmail,
         };
-        if (Number(row.user_role_id) === 3) {
-          assignments.manager = payload;
-        }
-        if (Number(row.user_role_id) === 4) {
-          assignments.courier = payload;
-        }
-      });
+      }
+      if (assignmentsRow?.courierId) {
+        assignments.courier = {
+          id: assignmentsRow.courierId,
+          full_name: assignmentsRow.courierFullName,
+          email: assignmentsRow.courierEmail,
+        };
+      }
 
       const items = itemsRows.map((row) => ({
         id: row.id,
@@ -1244,7 +1305,7 @@ function createOrdersAdminRouter(db) {
       return res.status(400).json({ ok: false, message: managerId.error });
     }
     if (managerId.value !== null) {
-      filters.push("am.user_id = ?");
+      filters.push("m.id = ?");
       params.push(managerId.value);
     }
 
@@ -1253,7 +1314,7 @@ function createOrdersAdminRouter(db) {
       return res.status(400).json({ ok: false, message: courierId.error });
     }
     if (courierId.value !== null) {
-      filters.push("ac.user_id = ?");
+      filters.push("c.id = ?");
       params.push(courierId.value);
     }
 
@@ -1304,18 +1365,44 @@ function createOrdersAdminRouter(db) {
       FROM orders o
       JOIN order_status os ON os.id = o.statusId
       JOIN users u ON u.id = o.user_id
-      LEFT JOIN (
-        SELECT order_id, user_id
-        FROM order_assignments
-        WHERE user_role_id = 3 AND active = 1
-      ) am ON am.order_id = o.id
-      LEFT JOIN users m ON m.id = am.user_id
-      LEFT JOIN (
-        SELECT order_id, user_id
-        FROM order_assignments
-        WHERE user_role_id = 4 AND active = 1
-      ) ac ON ac.order_id = o.id
-      LEFT JOIN users c ON c.id = ac.user_id
+      LEFT JOIN users m ON m.id = COALESCE(
+        (
+          SELECT oa.user_id
+          FROM order_assignments oa
+          WHERE oa.order_id = o.id
+            AND oa.user_role_id = 3
+            AND oa.active = 1
+          ORDER BY oa.assigned_at DESC, oa.id DESC
+          LIMIT 1
+        ),
+        (
+          SELECT oa.user_id
+          FROM order_assignments oa
+          WHERE oa.order_id = o.id
+            AND oa.user_role_id = 3
+          ORDER BY oa.assigned_at DESC, oa.id DESC
+          LIMIT 1
+        )
+      )
+      LEFT JOIN users c ON c.id = COALESCE(
+        (
+          SELECT oa.user_id
+          FROM order_assignments oa
+          WHERE oa.order_id = o.id
+            AND oa.user_role_id = 4
+            AND oa.active = 1
+          ORDER BY oa.assigned_at DESC, oa.id DESC
+          LIMIT 1
+        ),
+        (
+          SELECT oa.user_id
+          FROM order_assignments oa
+          WHERE oa.order_id = o.id
+            AND oa.user_role_id = 4
+          ORDER BY oa.assigned_at DESC, oa.id DESC
+          LIMIT 1
+        )
+      )
       ${whereClause}
     `;
 

@@ -975,7 +975,6 @@ function createOrdersRouter(db) {
           WHERE oa.order_id = o.id
             AND oa.user_role_id = 4
             AND oa.user_id = ?
-            AND oa.active = 1
         )
         ${hideClosed ? "AND s.name NOT IN ('finished', 'canceled')" : ""}
       `;
@@ -996,7 +995,6 @@ function createOrdersRouter(db) {
           WHERE oa.order_id = o.id
             AND oa.user_role_id = 4
             AND oa.user_id = ?
-            AND oa.active = 1
         )
         ${hideClosed ? "AND s.name NOT IN ('finished', 'canceled')" : ""}
         ORDER BY ${orderBy}
