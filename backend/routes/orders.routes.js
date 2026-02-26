@@ -62,7 +62,62 @@ function createOrdersRouter(db) {
       return res.status(401).json({ ok: false, message: "Unauthorized" });
     }
 
-    const query = `
+    const { limit, offset } = resolveLimitOffset(req);
+    const sortMap = {
+      order_id: "o.id",
+      id: "o.id",
+      created_at: "o.created_at",
+      status: "o.statusId",
+      total_final: "o.total_final",
+    };
+    const sortByRaw =
+      typeof req.query?.sortBy === "string" ? req.query.sortBy.trim() : "";
+    const sortDirRaw =
+      typeof req.query?.sortDir === "string"
+        ? req.query.sortDir.trim().toLowerCase()
+        : "";
+    const sortBy = sortByRaw || "order_id";
+    const sortDir = sortDirRaw || "desc";
+    const sortField = sortMap[sortBy];
+    if (!sortField) {
+      return res.status(400).json({ ok: false, message: "Invalid sortBy" });
+    }
+    if (!["asc", "desc"].includes(sortDir)) {
+      return res.status(400).json({ ok: false, message: "Invalid sortDir" });
+    }
+
+    const filters = ["o.user_id = ?"];
+    const params = [userId];
+
+    const statusRaw =
+      typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    if (statusRaw) {
+      filters.push("LOWER(s.name) = ?");
+      params.push(statusRaw.toLowerCase());
+    }
+
+    const dateFrom =
+      typeof req.query?.dateFrom === "string" ? req.query.dateFrom.trim() : "";
+    if (dateFrom) {
+      filters.push("o.created_at >= ?");
+      params.push(dateFrom);
+    }
+
+    const dateTo =
+      typeof req.query?.dateTo === "string" ? req.query.dateTo.trim() : "";
+    if (dateTo) {
+      filters.push("o.created_at <= ?");
+      params.push(dateTo);
+    }
+
+    const whereClause = `WHERE ${filters.join(" AND ")}`;
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM orders o
+      JOIN order_status s ON s.id = o.statusId
+      ${whereClause}
+    `;
+    const itemsQuery = `
       SELECT
         o.id,
         o.created_at AS createdAt,
@@ -72,24 +127,34 @@ function createOrdersRouter(db) {
         o.total_final AS total
       FROM orders o
       JOIN order_status s ON s.id = o.statusId
-      WHERE o.user_id = ?
-      ORDER BY o.id DESC
+      ${whereClause}
+      ORDER BY ${sortField} ${sortDir.toUpperCase()}, o.id DESC
+      LIMIT ? OFFSET ?
     `;
 
-    db.query(query, [userId], (err, rows) => {
-      if (err) {
-        console.error("Failed to fetch orders:", err);
+    db.query(countQuery, params, (countErr, countRows) => {
+      if (countErr) {
+        console.error("Failed to fetch orders count:", countErr);
         return res.status(500).json({ ok: false, message: "Failed to fetch orders" });
       }
-      const items = (rows || []).map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt,
-        status: row.status,
-        itemsTotal: Number(row.itemsTotal ?? 0),
-        totalDiscount: Number(row.totalDiscount ?? 0),
-        total: Number(row.total ?? 0),
-      }));
-      return res.json({ items });
+
+      const total = Number(countRows?.[0]?.total ?? 0);
+
+      db.query(itemsQuery, [...params, limit, offset], (err, rows) => {
+        if (err) {
+          console.error("Failed to fetch orders:", err);
+          return res.status(500).json({ ok: false, message: "Failed to fetch orders" });
+        }
+        const items = (rows || []).map((row) => ({
+          id: row.id,
+          createdAt: row.createdAt,
+          status: row.status,
+          itemsTotal: Number(row.itemsTotal ?? 0),
+          totalDiscount: Number(row.totalDiscount ?? 0),
+          total: Number(row.total ?? 0),
+        }));
+        return res.json({ items, page: { limit, offset, total } });
+      });
     });
   });
 

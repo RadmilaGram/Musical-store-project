@@ -1,7 +1,8 @@
 import { apiClient } from "./axiosInstance";
 
-export async function getMyOrders() {
+export async function getMyOrders(params = {}) {
   const { data } = await apiClient.get("/api/orders/my", {
+    params,
     withCredentials: true,
   });
   return data;

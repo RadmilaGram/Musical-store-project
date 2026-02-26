@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { categoryGroups } from "../constants/categoryGroups";
 import {
   Container,
   Grid,
@@ -7,18 +6,55 @@ import {
   CardMedia,
   CardContent,
   Typography,
+  Box,
+  CircularProgress,
 } from "@mui/material";
+import { useCategories } from "../hooks/useCategories";
+import { API_URL } from "../utils/apiService/ApiService";
+import {
+  CATEGORY_FALLBACK_IMAGE,
+  resolveCategoryImageUrl,
+} from "../utils/images/resolveCategoryImageUrl";
 
 const HomePage = () => {
+  const { data: categories, loading, error } = useCategories();
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Typography color="error" align="center" sx={{ mt: 5 }}>
+        Failed to load categories.
+      </Typography>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 5 }}>
       <Grid container spacing={4} justifyContent="center">
-        {categoryGroups.map((group) => (
-          <Grid item xs={12} sm={6} md={4} key={group.id}>
-            <Card
+        {(categories || []).map((category) => {
+          const fallbackImageUrl = resolveCategoryImageUrl(
+            CATEGORY_FALLBACK_IMAGE,
+            API_URL
+          );
+          const imageUrl = resolveCategoryImageUrl(
+            category.img || CATEGORY_FALLBACK_IMAGE,
+            API_URL
+          );
+
+          return (
+            <Grid item xs={12} sm={6} md={4} key={category.id}>
+              <Card
               sx={{
                 display: "flex",
                 flexDirection: "column",
+                width: 350,
                 maxWidth: 350,
                 margin: "0 auto",
                 boxShadow: 3,
@@ -31,7 +67,7 @@ const HomePage = () => {
               }}
             >
               <Link
-                to={`/category/${group.id}`}
+                to={`/category/${category.slug}`}
                 style={{
                   textDecoration: "none",
                   color: "inherit",
@@ -41,8 +77,8 @@ const HomePage = () => {
               >
                 <CardMedia
                   component="img"
-                  image={group.image}
-                  alt={group.title}
+                  image={imageUrl}
+                  alt={category.name}
                   sx={{
                     aspectRatio: "16 / 14",
                     width: "100%",
@@ -51,7 +87,7 @@ const HomePage = () => {
                     borderTopRightRadius: "12px",
                   }}
                   onError={(e) => {
-                    e.target.src = "/images/default-group.jpg";
+                    e.target.src = fallbackImageUrl;
                   }}
                 />
                 <CardContent sx={{ mt: "auto" }}>
@@ -61,13 +97,14 @@ const HomePage = () => {
                     color="text.primary"
                     sx={{ fontWeight: 500 }}
                   >
-                    {group.title}
+                    {category.name}
                   </Typography>
                 </CardContent>
               </Link>
-            </Card>
-          </Grid>
-        ))}
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
     </Container>
   );

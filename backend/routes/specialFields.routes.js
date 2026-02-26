@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
@@ -41,6 +43,7 @@ const parseNumericParam = (req, res, paramName, label) => {
 
 function createSpecialFieldsRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
 
   router.get("/values", (req, res) => {
     const raw = req.query.fieldIds;
@@ -167,7 +170,7 @@ function createSpecialFieldsRouter(db) {
     }
   });
 
-  router.post("/", async (req, res) => {
+  router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const name = normalizeString(req.body?.name);
     const datatypeId = validateDatatypeId(req.body?.datatypeId);
 
@@ -225,7 +228,7 @@ function createSpecialFieldsRouter(db) {
     );
   });
 
-  router.put("/:id", async (req, res) => {
+  router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
     const id = parseNumericParam(req, res, "id", "special field id");
     if (!id) return;
 
@@ -289,7 +292,7 @@ function createSpecialFieldsRouter(db) {
     );
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseNumericParam(req, res, "id", "special field id");
     if (!id) return;
 
@@ -352,7 +355,7 @@ function createSpecialFieldsRouter(db) {
     );
   });
 
-  router.post("/:fieldId/values", (req, res) => {
+  router.post("/:fieldId/values", requireAuth, requireAdmin, (req, res) => {
     const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
     if (!fieldId) return;
     const value = parseValuePayload(req.body?.value, res);
@@ -379,7 +382,7 @@ function createSpecialFieldsRouter(db) {
     );
   });
 
-  router.put("/:fieldId/values", (req, res) => {
+  router.put("/:fieldId/values", requireAuth, requireAdmin, (req, res) => {
     const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
     if (!fieldId) return;
 
@@ -459,7 +462,7 @@ function createSpecialFieldsRouter(db) {
     });
   });
 
-  router.delete("/:fieldId/values", (req, res) => {
+  router.delete("/:fieldId/values", requireAuth, requireAdmin, (req, res) => {
     const fieldId = parseNumericParam(req, res, "fieldId", "special field id");
     if (!fieldId) return;
     const value = parseValuePayload(req.body?.value, res);

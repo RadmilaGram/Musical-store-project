@@ -139,12 +139,12 @@ function createOrdersAdminRouter(db) {
         }
 
         if (excludeKey !== "managerId" && managerId.value !== null) {
-          clauses.push("am.user_id = ?");
+          clauses.push("m.id = ?");
           params.push(managerId.value);
         }
 
         if (excludeKey !== "courierId" && courierId.value !== null) {
-          clauses.push("ac.user_id = ?");
+          clauses.push("c.id = ?");
           params.push(courierId.value);
         }
 
@@ -175,18 +175,44 @@ function createOrdersAdminRouter(db) {
       const baseFrom = `
         FROM orders o
         JOIN users u ON u.id = o.user_id
-        LEFT JOIN (
-          SELECT order_id, user_id
-          FROM order_assignments
-          WHERE user_role_id = 3 AND active = 1
-        ) am ON am.order_id = o.id
-        LEFT JOIN users m ON m.id = am.user_id
-        LEFT JOIN (
-          SELECT order_id, user_id
-          FROM order_assignments
-          WHERE user_role_id = 4 AND active = 1
-        ) ac ON ac.order_id = o.id
-        LEFT JOIN users c ON c.id = ac.user_id
+        LEFT JOIN users m ON m.id = COALESCE(
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+              AND oa.active = 1
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 3
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          )
+        )
+        LEFT JOIN users c ON c.id = COALESCE(
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 4
+              AND oa.active = 1
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT oa.user_id
+            FROM order_assignments oa
+            WHERE oa.order_id = o.id
+              AND oa.user_role_id = 4
+            ORDER BY oa.assigned_at DESC, oa.id DESC
+            LIMIT 1
+          )
+        )
       `;
 
       const statusWhere = buildWhere("statusId");
@@ -205,19 +231,19 @@ function createOrdersAdminRouter(db) {
         ),
         query(
           `
-          SELECT am.user_id AS \`key\`, COUNT(*) AS cnt
+          SELECT m.id AS \`key\`, COUNT(*) AS cnt
           ${baseFrom}
           ${managerWhere.clause}
-          GROUP BY am.user_id
+          GROUP BY m.id
           `,
           managerWhere.params
         ),
         query(
           `
-          SELECT ac.user_id AS \`key\`, COUNT(*) AS cnt
+          SELECT c.id AS \`key\`, COUNT(*) AS cnt
           ${baseFrom}
           ${courierWhere.clause}
-          GROUP BY ac.user_id
+          GROUP BY c.id
           `,
           courierWhere.params
         ),

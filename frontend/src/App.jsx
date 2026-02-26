@@ -93,7 +93,7 @@ function App() {
 
         {/* публичные маршруты */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/category/:groupId" element={<CategoryPage />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/trade-in" element={<TradeIn />} />
         <Route

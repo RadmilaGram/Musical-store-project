@@ -19,6 +19,14 @@ const DEFAULT_TTL = 300000;
 const getErrorMessage = (error, fallback = "Request failed") =>
   error?.response?.data?.message || error?.message || fallback;
 
+const normalizeProductType = (item) => ({
+  ...item,
+  categoryId:
+    Number(item?.categoryId ?? item?.category_id ?? item?.category?.id ?? 0) ||
+    null,
+  categoryName: item?.categoryName ?? item?.category_name ?? item?.category?.name ?? "",
+});
+
 export function useProductTypesCrud() {
   const dispatch = useDispatch();
   const items = useSelector(selectProductTypesItems);
@@ -30,7 +38,7 @@ export function useProductTypesCrud() {
     dispatch(setLoading());
     try {
       const data = await productTypesApi.list();
-      dispatch(setItems(data));
+      dispatch(setItems((data || []).map(normalizeProductType)));
       dispatch(setLastLoadedAt(Date.now()));
     } catch (err) {
       dispatch(

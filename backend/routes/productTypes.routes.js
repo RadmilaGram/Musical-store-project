@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
@@ -20,6 +22,15 @@ const validateName = (name) => {
   return trimmed.length ? trimmed : null;
 };
 
+const parseCategoryId = (body) => {
+  const rawValue = body?.categoryId ?? body?.category_id;
+  const categoryId = Number(rawValue);
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    return null;
+  }
+  return categoryId;
+};
+
 const parseNumericParam = (
   req,
   res,
@@ -36,11 +47,19 @@ const parseNumericParam = (
 
 function createProductTypesRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
 
   const fetchProductTypeById = (id) =>
     new Promise((resolve, reject) => {
       db.query(
-        "SELECT id, name FROM product_type WHERE id = ?",
+        `SELECT
+           pt.id,
+           pt.name,
+           pt.category_id AS category_id,
+           pc.name AS category_name
+         FROM product_type pt
+         LEFT JOIN product_category pc ON pc.id = pt.category_id
+         WHERE pt.id = ?`,
         [id],
         (err, rows) => {
           if (err) {
@@ -54,7 +73,14 @@ function createProductTypesRouter(db) {
 
   router.get("/", (req, res) => {
     db.query(
-      "SELECT id, name FROM product_type ORDER BY id DESC",
+      `SELECT
+         pt.id,
+         pt.name,
+         pt.category_id AS category_id,
+         pc.name AS category_name
+       FROM product_type pt
+       LEFT JOIN product_category pc ON pc.id = pt.category_id
+       ORDER BY pt.id DESC`,
       (err, results) => {
         if (err) {
           return errorResponse(
@@ -88,15 +114,19 @@ function createProductTypesRouter(db) {
     }
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", requireAuth, requireAdmin, (req, res) => {
     const name = validateName(req.body?.name);
     if (!name) {
       return errorResponse(res, 400, "Name is required");
     }
+    const categoryId = parseCategoryId(req.body);
+    if (!categoryId) {
+      return errorResponse(res, 400, "categoryId is required");
+    }
 
     db.query(
-      "INSERT INTO product_type (name) VALUES (?)",
-      [name],
+      "INSERT INTO product_type (name, category_id) VALUES (?, ?)",
+      [name, categoryId],
       async (err, result) => {
         if (err) {
           if (err.code === DUP_ENTRY_CODE) {
@@ -128,7 +158,7 @@ function createProductTypesRouter(db) {
     );
   });
 
-  router.put("/:id", (req, res) => {
+  router.put("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseNumericParam(req, res);
     if (!id) return;
 
@@ -136,10 +166,14 @@ function createProductTypesRouter(db) {
     if (!name) {
       return errorResponse(res, 400, "Name is required");
     }
+    const categoryId = parseCategoryId(req.body);
+    if (!categoryId) {
+      return errorResponse(res, 400, "categoryId is required");
+    }
 
     db.query(
-      "UPDATE product_type SET name = ? WHERE id = ?",
-      [name, id],
+      "UPDATE product_type SET name = ?, category_id = ? WHERE id = ?",
+      [name, categoryId, id],
       async (err, result) => {
         if (err) {
           if (err.code === DUP_ENTRY_CODE) {
@@ -174,7 +208,7 @@ function createProductTypesRouter(db) {
     );
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseNumericParam(req, res);
     if (!id) return;
 
@@ -252,7 +286,11 @@ function createProductTypesRouter(db) {
     );
   });
 
-  router.put("/:typeId/special-field-assignments", (req, res) => {
+  router.put(
+    "/:typeId/special-field-assignments",
+    requireAuth,
+    requireAdmin,
+    (req, res) => {
     const typeId = parseNumericParam(req, res, "typeId", "typeId");
     if (!typeId) return;
 
@@ -341,7 +379,8 @@ function createProductTypesRouter(db) {
         }
       );
     });
-  });
+    }
+  );
 
   return router;
 }

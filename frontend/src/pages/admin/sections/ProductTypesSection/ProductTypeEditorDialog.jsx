@@ -1,11 +1,15 @@
 import React, { useEffect } from "react";
-import { Alert, Stack, TextField } from "@mui/material";
+import { Alert, MenuItem, Stack, TextField } from "@mui/material";
+import { Controller } from "react-hook-form";
 import EditorDialog from "../../../../admin/crud/EditorDialog";
 import { useProductTypeForm } from "../../../../forms/productType/useProductTypeForm";
 import { useProductTypesCrud } from "../../../../features/admin/productTypes/useProductTypesCrud";
+import { useAdminCategories } from "../../../../features/admin/categories/useAdminCategories";
 
 export default function ProductTypeEditorDialog({ open, productType, onClose }) {
   const { createProductType, updateProductType } = useProductTypesCrud();
+  const { data: categories, loading: categoriesLoading, error: categoriesError } =
+    useAdminCategories();
   const {
     form,
     onSubmit,
@@ -16,6 +20,7 @@ export default function ProductTypeEditorDialog({ open, productType, onClose }) 
   } = useProductTypeForm();
   const {
     register,
+    control,
     formState: { errors },
   } = form;
 
@@ -53,6 +58,34 @@ export default function ProductTypeEditorDialog({ open, productType, onClose }) 
           error={!!errors.name}
           helperText={errors.name?.message}
           autoFocus
+        />
+        <Controller
+          name="categoryId"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              fullWidth
+              label="Category"
+              error={!!errors.categoryId}
+              helperText={
+                errors.categoryId?.message ||
+                (categoriesError
+                  ? categoriesError?.response?.data?.message ||
+                    categoriesError?.message
+                  : "")
+              }
+              disabled={categoriesLoading}
+            >
+              <MenuItem value="">Select category</MenuItem>
+              {(categories || []).map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         />
       </Stack>
     </EditorDialog>

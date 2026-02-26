@@ -87,13 +87,24 @@ export default function ProductTypesSection() {
     if (!query) {
       return items;
     }
-    return items.filter((type) => type.name?.toLowerCase().includes(query));
+    return items.filter(
+      (type) =>
+        type.name?.toLowerCase().includes(query) ||
+        type.categoryName?.toLowerCase().includes(query)
+    );
   }, [items, searchValue]);
 
   const columns = useMemo(
     () => [
       { field: "id", headerName: "ID", width: 90 },
       { field: "name", headerName: "Name", flex: 1 },
+      {
+        field: "categoryName",
+        headerName: "Category",
+        flex: 1,
+        renderCell: (params) =>
+          params.row.categoryName || params.row.category_name || params.row.categoryId || "-",
+      },
       {
         field: "actions",
         headerName: "Actions",

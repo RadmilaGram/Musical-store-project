@@ -3,6 +3,7 @@ import { getMyOrders, getMyOrderDetails } from "../api/orders.api";
 
 export function useMyOrders() {
   const [items, setItems] = useState([]);
+  const [page, setPage] = useState({ limit: 20, offset: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -10,12 +11,19 @@ export function useMyOrders() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState(null);
 
-  const loadMyOrders = useCallback(async () => {
+  const loadMyOrders = useCallback(async (params = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getMyOrders();
+      const data = await getMyOrders(params);
       setItems(data?.items ?? []);
+      setPage(
+        data?.page ?? {
+          limit: params.limit ?? 20,
+          offset: params.offset ?? 0,
+          total: data?.items?.length ?? 0,
+        }
+      );
       return data;
     } catch (err) {
       setError(err);
@@ -52,6 +60,7 @@ export function useMyOrders() {
 
   return {
     items,
+    page,
     loading,
     error,
     selectedOrderId,

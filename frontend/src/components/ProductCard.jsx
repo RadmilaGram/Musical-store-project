@@ -36,7 +36,7 @@ export default function ProductCard({
     specialFieldsCatalog
   );
 
-  const fullDesc = product.description || "";
+  const fullDesc = (product.description ?? "").trim();
 
   // Measure overflow for description
   useEffect(() => {
@@ -147,43 +147,45 @@ export default function ProductCard({
           </Box>
 
           {/* Description under special fields, clamp at CLAMP_LINES lines */}
-          <Box
-            sx={{
-              mt: 1,
-              display: "flex",
-              alignItems: "flex-start",
-              width: "100%",
-            }}
-          >
-            <Typography
-              ref={descRef}
-              variant="body2"
-              color="text.secondary"
-              component="div"
+          {fullDesc.length > 0 && (
+            <Box
               sx={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-                overflowWrap: "break-word",
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: expanded ? "none" : CLAMP_LINES,
-                maxHeight: expanded ? "none" : `${maxHeight}px`,
+                mt: 1,
+                display: "flex",
+                alignItems: "flex-start",
+                width: "100%",
               }}
             >
-              <strong>Description:&nbsp;</strong>
-              {fullDesc}
-            </Typography>
-            {isOverflowed && (
-              <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
-                {expanded ? (
-                  <ExpandLessIcon sx={{ color: "#1976d2" }} />
-                ) : (
-                  <ExpandMoreIcon sx={{ color: "#1976d2" }} />
-                )}
-              </IconButton>
-            )}
-          </Box>
+              <Typography
+                ref={descRef}
+                variant="body2"
+                color="text.secondary"
+                component="div"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  overflowWrap: "break-word",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: expanded ? "none" : CLAMP_LINES,
+                  maxHeight: expanded ? "none" : `${maxHeight}px`,
+                }}
+              >
+                <strong>Description:&nbsp;</strong>
+                {fullDesc}
+              </Typography>
+              {isOverflowed && (
+                <IconButton size="small" onClick={() => setExpanded((v) => !v)}>
+                  {expanded ? (
+                    <ExpandLessIcon sx={{ color: "#1976d2" }} />
+                  ) : (
+                    <ExpandMoreIcon sx={{ color: "#1976d2" }} />
+                  )}
+                </IconButton>
+              )}
+            </Box>
+          )}
         </Box>
       </Box>
 

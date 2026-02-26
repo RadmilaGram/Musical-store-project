@@ -5,6 +5,7 @@ import { productTypeSchema } from "./productTypeSchema";
 
 const defaultValues = {
   name: "",
+  categoryId: "",
 };
 
 const getErrorMessage = (error) =>
@@ -43,6 +44,13 @@ export function useProductTypeForm() {
         productType
           ? {
               name: productType.name || "",
+              categoryId:
+                Number(
+                  productType.categoryId ??
+                    productType.category_id ??
+                    productType.category?.id ??
+                    ""
+                ) || "",
             }
           : defaultValues
       );

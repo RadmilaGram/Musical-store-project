@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
@@ -43,6 +45,7 @@ const parseCodeParam = (req, res) => {
 
 function createTradeInConditionsRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
 
   router.get("/", (req, res) => {
     db.query(
@@ -88,7 +91,7 @@ function createTradeInConditionsRouter(db) {
     );
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", requireAuth, requireAdmin, (req, res) => {
     const code = validateCode(req.body?.code);
     const percent = validatePercent(req.body?.percent);
 
@@ -120,7 +123,7 @@ function createTradeInConditionsRouter(db) {
     );
   });
 
-  router.put("/:code", (req, res) => {
+  router.put("/:code", requireAuth, requireAdmin, (req, res) => {
     const code = parseCodeParam(req, res);
     if (!code) return;
 
@@ -150,7 +153,7 @@ function createTradeInConditionsRouter(db) {
     );
   });
 
-  router.delete("/:code", (req, res) => {
+  router.delete("/:code", requireAuth, requireAdmin, (req, res) => {
     const code = parseCodeParam(req, res);
     if (!code) return;
 

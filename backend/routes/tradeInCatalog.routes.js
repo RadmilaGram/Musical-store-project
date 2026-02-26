@@ -1,5 +1,6 @@
 const express = require("express");
 const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 
@@ -80,15 +81,6 @@ function createTradeInCatalogRouter(db) {
   const router = express.Router();
   const requireAuth = createRequireAuth(db);
 
-  const requireAdmin = (req, res) => {
-    const role = Number(req.user?.role);
-    if (role !== 1) {
-      res.status(403).json({ success: false, message: "Forbidden" });
-      return false;
-    }
-    return true;
-  };
-
   const query = (sql, params = []) =>
     new Promise((resolve, reject) => {
       db.query(sql, params, (err, rows) => {
@@ -133,11 +125,7 @@ function createTradeInCatalogRouter(db) {
     });
   });
 
-  router.get("/admin/offers", requireAuth, (req, res) => {
-    if (!requireAdmin(req, res)) {
-      return;
-    }
-
+  router.get("/admin/offers", requireAuth, requireAdmin, (req, res) => {
     const productId = validateProductId(req.query?.product_id);
     if (req.query?.product_id !== undefined && !productId) {
       return errorResponse(res, 400, "Invalid product_id");
@@ -174,11 +162,7 @@ function createTradeInCatalogRouter(db) {
     });
   });
 
-  router.post("/admin/offers", requireAuth, async (req, res) => {
-    if (!requireAdmin(req, res)) {
-      return;
-    }
-
+  router.post("/admin/offers", requireAuth, requireAdmin, async (req, res) => {
     const productId = validateProductId(req.body?.product_id);
     if (!productId) {
       return errorResponse(res, 400, "Invalid product_id");
@@ -230,11 +214,11 @@ function createTradeInCatalogRouter(db) {
     }
   });
 
-  router.patch("/admin/offers/:id/active", requireAuth, async (req, res) => {
-    if (!requireAdmin(req, res)) {
-      return;
-    }
-
+  router.patch(
+    "/admin/offers/:id/active",
+    requireAuth,
+    requireAdmin,
+    async (req, res) => {
     const offerId = Number(req.params.id);
     if (!Number.isInteger(offerId) || offerId <= 0) {
       return errorResponse(res, 400, "Invalid id");
@@ -280,11 +264,7 @@ function createTradeInCatalogRouter(db) {
     }
   });
 
-  router.delete("/admin/offers/:id", requireAuth, (req, res) => {
-    if (!requireAdmin(req, res)) {
-      return;
-    }
-
+  router.delete("/admin/offers/:id", requireAuth, requireAdmin, (req, res) => {
     const offerId = Number(req.params.id);
     if (!Number.isInteger(offerId) || offerId <= 0) {
       return errorResponse(res, 400, "Invalid id");
@@ -311,7 +291,7 @@ function createTradeInCatalogRouter(db) {
     );
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", requireAuth, requireAdmin, (req, res) => {
     const productId = validateProductId(req.body?.productId);
     if (!productId) {
       return errorResponse(res, 400, "Invalid productId");
@@ -365,7 +345,7 @@ function createTradeInCatalogRouter(db) {
     );
   });
 
-  router.put("/:productId", (req, res) => {
+  router.put("/:productId", requireAuth, requireAdmin, (req, res) => {
     const productId = validateProductId(req.params.productId);
     if (!productId) {
       return errorResponse(res, 400, "Invalid productId");
@@ -422,7 +402,7 @@ function createTradeInCatalogRouter(db) {
     );
   });
 
-  router.delete("/:productId", (req, res) => {
+  router.delete("/:productId", requireAuth, requireAdmin, (req, res) => {
     const productId = validateProductId(req.params.productId);
     if (!productId) {
       return errorResponse(res, 400, "Invalid productId");

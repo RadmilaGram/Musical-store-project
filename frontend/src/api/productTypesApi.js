@@ -17,11 +17,26 @@ export const productTypesApi = {
     return unwrap(response);
   },
   async create(payload) {
-    const response = await apiClient.post("/api/product-types", payload);
+    const categoryId = Number(payload?.categoryId);
+    const normalizedPayload = {
+      name: payload?.name,
+      categoryId,
+      category_id: categoryId,
+    };
+    const response = await apiClient.post("/api/product-types", normalizedPayload);
     return unwrap(response);
   },
   async update(id, payload) {
-    const response = await apiClient.put(`/api/product-types/${id}`, payload);
+    const categoryId = Number(payload?.categoryId);
+    const normalizedPayload = {
+      name: payload?.name,
+      categoryId,
+      category_id: categoryId,
+    };
+    const response = await apiClient.put(
+      `/api/product-types/${id}`,
+      normalizedPayload
+    );
     return unwrap(response);
   },
   async remove(id) {

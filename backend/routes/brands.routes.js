@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 
@@ -30,6 +32,7 @@ const parseIdParam = (req, res) => {
 
 function createBrandsRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
 
   const fetchBrandById = (id) =>
     new Promise((resolve, reject) => {
@@ -68,7 +71,7 @@ function createBrandsRouter(db) {
     }
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", requireAuth, requireAdmin, (req, res) => {
     const name = validateName(req.body?.name);
     if (!name) {
       return errorResponse(res, 400, "Name is required");
@@ -95,7 +98,7 @@ function createBrandsRouter(db) {
     });
   });
 
-  router.put("/:id", (req, res) => {
+  router.put("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 
@@ -132,7 +135,7 @@ function createBrandsRouter(db) {
     );
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 

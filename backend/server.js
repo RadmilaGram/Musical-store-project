@@ -19,6 +19,10 @@ const createOrdersAdminRouter = require("./routes/ordersAdmin.routes");
 const createAuthRouter = require("./routes/auth.routes");
 const createUsersRouter = require("./routes/users.routes");
 const createAdminUsersRouter = require("./routes/adminUsers.routes");
+const {
+  createCategoriesRouter,
+  createAdminCategoriesRouter,
+} = require("./routes/categories.routes");
 
 const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 12;
@@ -28,6 +32,10 @@ app.use(cors({ origin: true, credentials: true })); // Настроим CORS д�
 app.use(express.json()); // Парсим JSON-данные из запросов
 app.use(express.urlencoded({ extended: true })); // Поддержка form-data без файлов
 app.use("/uploads", express.static("uploads")); // доступ к изображениям
+app.use(
+  "/images",
+  express.static(path.resolve(__dirname, "../frontend/public/images"))
+);
 app.use(cookieParser());
 app.use(
   session({
@@ -83,6 +91,8 @@ app.use("/api/orders", createOrdersRouter(db));
 app.use("/api/auth", createAuthRouter(db));
 app.use("/api/users", createUsersRouter(db));
 app.use("/api/admin", createAdminUsersRouter(db));
+app.use("/api/categories", createCategoriesRouter(db));
+app.use("/api/admin/categories", createAdminCategoriesRouter(db));
 
 // /**
 //  * Принимает «чистый» пароль пользователя,

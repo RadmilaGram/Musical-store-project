@@ -8,6 +8,7 @@ import ProductTypeSpecialFieldsSection from "./admin/sections/ProductTypeSpecial
 import ProductsSection from "./admin/sections/ProductsSection/ProductsSection";
 import TradeInConditionsSection from "./admin/sections/TradeInConditionsSection/TradeInConditionsSection";
 import TradeInCatalogSection from "./admin/sections/TradeInCatalogSection/TradeInCatalogSection";
+import CategoriesSection from "./admin/sections/CategoriesSection/CategoriesSection";
 import PageContainer from "../components/ui/PageContainer";
 import PageTitle from "../components/ui/PageTitle";
 
@@ -17,6 +18,7 @@ export default function AdminCatalogPage() {
       <PageTitle sx={{ mb: 3 }}>Catalog</PageTitle>
       <Stack spacing={4} sx={{ width: "100%" }}>
         <BrandsSection />
+        <CategoriesSection />
         <ProductTypesSection />
         <ProductStatusesSection />
         <SpecialFieldsSection />

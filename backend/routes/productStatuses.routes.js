@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const DUP_ENTRY_CODE = "ER_DUP_ENTRY";
 const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
@@ -34,6 +36,7 @@ const parseIdParam = (req, res) => {
 
 function createProductStatusesRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
 
   const fetchStatusById = (id) =>
     new Promise((resolve, reject) => {
@@ -88,7 +91,7 @@ function createProductStatusesRouter(db) {
     }
   });
 
-  router.post("/", (req, res) => {
+  router.post("/", requireAuth, requireAdmin, (req, res) => {
     const name = validateName(req.body?.name);
     if (!name) {
       return errorResponse(res, 400, "Name is required");
@@ -126,7 +129,7 @@ function createProductStatusesRouter(db) {
     );
   });
 
-  router.put("/:id", (req, res) => {
+  router.put("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 
@@ -170,7 +173,7 @@ function createProductStatusesRouter(db) {
     );
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 

@@ -1,4 +1,6 @@
 const express = require("express");
+const createRequireAuth = require("../middlewares/requireAuth");
+const requireAdmin = require("../middlewares/requireAdmin");
 
 const FK_CONSTRAINT_CODE = "ER_ROW_IS_REFERENCED_2";
 
@@ -177,6 +179,7 @@ const pickerSelectQuery = () => `
 
 function createProductsRouter(db) {
   const router = express.Router();
+  const requireAuth = createRequireAuth(db);
   const baseSelect = makeSelectBaseQuery();
   const pickerSelect = pickerSelectQuery();
 
@@ -271,7 +274,7 @@ function createProductsRouter(db) {
     }
   });
 
-  router.post("/", async (req, res) => {
+  router.post("/", requireAuth, requireAdmin, async (req, res) => {
     const { data, error } = validateProductPayload(req.body || {});
     if (error) {
       return errorResponse(res, 400, error);
@@ -314,7 +317,7 @@ function createProductsRouter(db) {
     );
   });
 
-  router.put("/:id", (req, res) => {
+  router.put("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 
@@ -364,7 +367,7 @@ function createProductsRouter(db) {
     );
   });
 
-  router.delete("/:id", (req, res) => {
+  router.delete("/:id", requireAuth, requireAdmin, (req, res) => {
     const id = parseIdParam(req, res);
     if (!id) return;
 

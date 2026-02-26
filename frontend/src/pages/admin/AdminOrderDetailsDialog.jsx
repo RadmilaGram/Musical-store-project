@@ -30,6 +30,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { keyframes } from "@mui/system";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 const cancelReasonSchema = yup.object({
@@ -128,6 +129,27 @@ const assignCourierSchema = yup.object({
     .required("Courier is required"),
 });
 
+const errorPulse = keyframes`
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(211, 47, 47, 0.92),
+      0 0 0 0 rgba(211, 47, 47, 0.62),
+      0 0 0 0 rgba(211, 47, 47, 0.38);
+  }
+  35% {
+    box-shadow:
+      0 0 0 6px rgba(211, 47, 47, 0.88),
+      0 0 0 16px rgba(211, 47, 47, 0.48),
+      0 0 0 26px rgba(211, 47, 47, 0.22);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(211, 47, 47, 0),
+      0 0 0 0 rgba(211, 47, 47, 0),
+      0 0 0 0 rgba(211, 47, 47, 0);
+  }
+`;
+
 export default function AdminOrderDetailsDialog({
   open,
   onClose,
@@ -153,6 +175,7 @@ export default function AdminOrderDetailsDialog({
 }) {
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [actionsExpanded, setActionsExpanded] = useState(false);
+  const [isErrorPulseActive, setIsErrorPulseActive] = useState(false);
   const lastHistoryOrderId = useRef(null);
   const {
     register,
@@ -326,7 +349,7 @@ export default function AdminOrderDetailsDialog({
       return;
     }
     lastHistoryOrderId.current = orderId;
-    onFetchHistory();
+    onFetchHistory().catch(() => {});
   }, [open, orderId, onFetchHistory]);
 
   const formatUser = (user) => {
@@ -362,7 +385,7 @@ export default function AdminOrderDetailsDialog({
   const handleHistoryToggle = (_, expanded) => {
     setHistoryExpanded(expanded);
     if (expanded && onFetchHistory) {
-      onFetchHistory();
+      onFetchHistory().catch(() => {});
     }
   };
 
@@ -373,29 +396,39 @@ export default function AdminOrderDetailsDialog({
   const handleStatusChange = async ({ statusId, statusNote }) => {
     if (!statusId || !onChangeStatus || actionLoading?.status) return;
     const trimmedStatusNote = (statusNote || "").trim();
-    await onChangeStatus(Number(statusId), trimmedStatusNote || undefined);
-    resetStatusForm({ statusId, statusNote: "" });
+    try {
+      await onChangeStatus(Number(statusId), trimmedStatusNote || undefined);
+      resetStatusForm({ statusId, statusNote: "" });
+    } catch (_) {}
   };
 
   const handleAssignManager = async ({ managerId }) => {
     if (!onAssign || actionLoading?.assignManager) return;
-    await onAssign(3, Number(managerId));
+    try {
+      await onAssign(3, Number(managerId));
+    } catch (_) {}
   };
 
   const handleAssignCourier = async ({ courierId }) => {
     if (!courierId || !onAssign || actionLoading?.assignCourier) return;
-    await onAssign(4, Number(courierId));
-    resetCourierAssignForm({ courierId: "" });
+    try {
+      await onAssign(4, Number(courierId));
+      resetCourierAssignForm({ courierId: "" });
+    } catch (_) {}
   };
 
   const handleUnassignManager = async () => {
     if (!onUnassign || actionLoading?.unassignManager) return;
-    await onUnassign(3);
+    try {
+      await onUnassign(3);
+    } catch (_) {}
   };
 
   const handleUnassignCourier = async () => {
     if (!onUnassign || actionLoading?.unassignCourier) return;
-    await onUnassign(4);
+    try {
+      await onUnassign(4);
+    } catch (_) {}
   };
 
   const handleSaveDelivery = async ({
@@ -409,31 +442,72 @@ export default function AdminOrderDetailsDialog({
       delivery_address: (deliveryAddress || "").trim(),
       delivery_phone: (deliveryPhone || "").trim(),
     };
-    await onUpdateDelivery({
-      contact_name: payload.contact_name,
-      delivery_address: payload.delivery_address,
-      delivery_phone: payload.delivery_phone,
-    });
-    resetDeliveryForm({
-      deliveryContact: payload.contact_name,
-      deliveryAddress: payload.delivery_address,
-      deliveryPhone: payload.delivery_phone,
-    });
+    try {
+      await onUpdateDelivery({
+        contact_name: payload.contact_name,
+        delivery_address: payload.delivery_address,
+        delivery_phone: payload.delivery_phone,
+      });
+      resetDeliveryForm({
+        deliveryContact: payload.contact_name,
+        deliveryAddress: payload.delivery_address,
+        deliveryPhone: payload.delivery_phone,
+      });
+    } catch (_) {}
   };
 
   const handleSaveComment = async ({ comment }) => {
     if (!onUpdateComment || actionLoading?.comment) return;
-    await onUpdateComment(comment.trim());
+    try {
+      await onUpdateComment(comment.trim());
+    } catch (_) {}
   };
 
   const handleCancelOrder = async ({ reason }) => {
     if (!onCancel || actionLoading?.cancel) return;
-    await onCancel(reason.trim());
-    reset({ reason: "" });
+    try {
+      await onCancel(reason.trim());
+      reset({ reason: "" });
+    } catch (_) {}
   };
 
+  useEffect(() => {
+    if (!open || (!detailsError && !actionError)) {
+      return undefined;
+    }
+
+    setIsErrorPulseActive(false);
+    const startTimer = setTimeout(() => {
+      setIsErrorPulseActive(true);
+    }, 0);
+    const stopTimer = setTimeout(() => {
+      setIsErrorPulseActive(false);
+    }, 2500);
+
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(stopTimer);
+    };
+  }, [open, detailsError, actionError]);
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          boxSizing: "border-box",
+          ...(isErrorPulseActive
+            ? {
+                outline: "4px solid rgba(211, 47, 47, 0.9)",
+                animation: `${errorPulse} 2.5s ease-out`,
+              }
+            : {}),
+        },
+      }}
+    >
       <DialogTitle>
         {orderId ? `Order #${orderId}` : "Order details"}{" "}
         {statusName ? `— ${statusName}` : ""}

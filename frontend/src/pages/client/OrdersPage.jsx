@@ -17,6 +17,8 @@ import {
   Select,
   MenuItem,
   TextField,
+  TableSortLabel,
+  TablePagination,
 } from "@mui/material";
 import { cancelMyOrder } from "../../api/orders.api";
 import { useMyOrders } from "../../use-cases/useMyOrders";
@@ -27,6 +29,7 @@ import PageTitle from "../../components/ui/PageTitle";
 export default function OrdersPage() {
   const {
     items,
+    page,
     loading,
     error,
     loadMyOrders,
@@ -42,6 +45,10 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
+  const [limit, setLimit] = React.useState(10);
+  const [offset, setOffset] = React.useState(0);
+  const [sortBy, setSortBy] = React.useState("created_at");
+  const [sortDir, setSortDir] = React.useState("desc");
 
   const handleOpenDetails = (orderId) => {
     if (import.meta.env.DEV) {
@@ -55,7 +62,7 @@ export default function OrdersPage() {
   const handleCancelOrder = async (orderId) => {
     await cancelMyOrder(orderId);
     setDialogOpen(false);
-    await loadMyOrders();
+    await loadMyOrders(buildQueryParams());
   };
 
   const formatDate = (value) => {
@@ -71,37 +78,50 @@ export default function OrdersPage() {
     }).format(date);
   };
 
-  const filteredOrders = React.useMemo(() => {
-    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
-    const toDate = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
+  const buildQueryParams = () => {
+    const params = { limit, offset, sortBy, sortDir };
+    if (statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    if (dateFrom) {
+      params.dateFrom = dateFrom;
+    }
+    if (dateTo) {
+      params.dateTo = dateTo;
+    }
+    return params;
+  };
 
-    return (items || []).filter((order) => {
-      const statusValue = String(order.status || "").toLowerCase();
-      if (statusFilter !== "all" && statusValue !== statusFilter) {
-        return false;
-      }
+  const handleSort = (key) => {
+    const nextDir =
+      sortBy === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    setSortBy(key);
+    setSortDir(nextDir);
+    setOffset(0);
+  };
 
-      if (fromDate || toDate) {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        if (Number.isNaN(orderDate.getTime())) return false;
-        if (fromDate && orderDate < fromDate) return false;
-        if (toDate && orderDate > toDate) return false;
-      }
+  const handlePageChange = (_, nextPage) => {
+    setOffset(nextPage * limit);
+  };
 
-      return true;
-    });
-  }, [items, statusFilter, dateFrom, dateTo]);
+  const handleRowsPerPageChange = (event) => {
+    const nextLimit = Number(event.target.value);
+    setLimit(nextLimit);
+    setOffset(0);
+  };
 
   const clearFilters = () => {
     setStatusFilter("all");
     setDateFrom("");
     setDateTo("");
+    setOffset(0);
   };
 
   useEffect(() => {
-    loadMyOrders().catch(() => {});
-  }, [loadMyOrders]);
+    loadMyOrders(buildQueryParams()).catch(() => {});
+  }, [loadMyOrders, limit, offset, sortBy, sortDir, statusFilter, dateFrom, dateTo]);
+
+  const pageIndex = limit > 0 ? Math.floor(offset / limit) : 0;
 
   return (
     <PageContainer maxWidth="lg">
@@ -116,27 +136,30 @@ export default function OrdersPage() {
       {error && !loading && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Alert severity="error">Failed to load orders.</Alert>
-          <Button variant="contained" onClick={() => loadMyOrders()}>
+          <Button variant="contained" onClick={() => loadMyOrders(buildQueryParams())}>
             Retry
           </Button>
         </Stack>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {!loading && !error && Number(page?.total ?? 0) === 0 && (
         <Typography>No orders yet</Typography>
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!loading && !error && Number(page?.total ?? 0) > 0 && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel id="orders-status-label">Status</InputLabel>
-              <Select
-                labelId="orders-status-label"
-                label="Status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-              >
+                <Select
+                  labelId="orders-status-label"
+                  label="Status"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    setOffset(0);
+                  }}
+                >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="new">New</MenuItem>
                 <MenuItem value="preparing">Preparing</MenuItem>
@@ -146,48 +169,86 @@ export default function OrdersPage() {
                 <MenuItem value="canceled">Canceled</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              size="small"
-              label="From"
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              size="small"
-              label="To"
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+              <TextField
+                size="small"
+                label="From"
+                type="date"
+                value={dateFrom}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setOffset(0);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                size="small"
+                label="To"
+                type="date"
+                value={dateTo}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setOffset(0);
+                }}
+                InputLabelProps={{ shrink: true }}
+              />
             <Button variant="outlined" onClick={clearFilters}>
               Clear
             </Button>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Showing {filteredOrders.length} of {items.length}
+            Showing {items.length} of {page?.total ?? 0}
           </Typography>
         </Stack>
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!loading && !error && Number(page?.total ?? 0) > 0 && (
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Order #</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
+                <TableCell sortDirection={sortBy === "id" ? sortDir : false}>
+                  <TableSortLabel
+                    active={sortBy === "id"}
+                    direction={sortBy === "id" ? sortDir : "asc"}
+                    onClick={() => handleSort("id")}
+                  >
+                    Order #
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === "created_at" ? sortDir : false}>
+                  <TableSortLabel
+                    active={sortBy === "created_at"}
+                    direction={sortBy === "created_at" ? sortDir : "asc"}
+                    onClick={() => handleSort("created_at")}
+                  >
+                    Created
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={sortBy === "status" ? sortDir : false}>
+                  <TableSortLabel
+                    active={sortBy === "status"}
+                    direction={sortBy === "status" ? sortDir : "asc"}
+                    onClick={() => handleSort("status")}
+                  >
+                    Status
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={sortBy === "total_final" ? sortDir : false}>
+                  <TableSortLabel
+                    active={sortBy === "total_final"}
+                    direction={sortBy === "total_final" ? sortDir : "asc"}
+                    onClick={() => handleSort("total_final")}
+                  >
+                    Total
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                   Actions
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredOrders.map((order) => (
+              {items.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>{order.id}</TableCell>
                   <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -207,6 +268,17 @@ export default function OrdersPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+      {!loading && !error && Number(page?.total ?? 0) > 0 && (
+        <TablePagination
+          component="div"
+          count={Number(page?.total ?? 0)}
+          page={pageIndex}
+          onPageChange={handlePageChange}
+          rowsPerPage={limit}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={[10, 20, 50, 100]}
+        />
       )}
       <OrderDetailsDialog
         open={isDialogOpen}

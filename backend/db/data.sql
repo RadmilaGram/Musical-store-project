@@ -59,9 +59,15 @@ INSERT INTO `product_status` VALUES (3,'hiden'),(1,'in stock'),(2,'out of stock'
 /*!40000 ALTER TABLE `product_status` ENABLE KEYS */;
 UNLOCK TABLES;
 
+LOCK TABLES `product_category` WRITE;
+/*!40000 ALTER TABLE `product_category` DISABLE KEYS */;
+INSERT INTO `product_category` (`id`,`name`,`slug`,`img`,`sort_order`,`is_active`) VALUES (1,'String Instruments','string-instruments','/images/strings.jpeg',10,1),(2,'Keyboard Instruments','keyboard-instruments','/images/keys-group.jpg',20,1);
+/*!40000 ALTER TABLE `product_category` ENABLE KEYS */;
+UNLOCK TABLES;
+
 LOCK TABLES `product_type` WRITE;
 /*!40000 ALTER TABLE `product_type` DISABLE KEYS */;
-INSERT INTO `product_type` VALUES (21,'Acoustic Guitars'),(24,'Bass Guitars'),(22,'Classical Guitars'),(17,'Digital piano'),(23,'Electric Guitars'),(20,'MIDI controller'),(19,'Stage piano'),(18,'Synthesizer');
+INSERT INTO `product_type` (`id`,`name`,`category_id`) VALUES (21,'Acoustic Guitars',1),(24,'Bass Guitars',1),(22,'Classical Guitars',1),(17,'Digital piano',2),(23,'Electric Guitars',1),(20,'MIDI controller',2),(19,'Stage piano',2),(18,'Synthesizer',2);
 /*!40000 ALTER TABLE `product_type` ENABLE KEYS */;
 UNLOCK TABLES;
 

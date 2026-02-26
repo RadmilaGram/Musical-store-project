@@ -19,6 +19,7 @@ export default function EntityToolbar({
   onRefreshClick,
   isRefreshing = false,
   disableCreate = false,
+  createButtonLabel = "Create",
   filtersSlot = null,
 }) {
   return (
@@ -41,7 +42,7 @@ export default function EntityToolbar({
               onClick={onCreateClick}
               disabled={disableCreate}
             >
-              Create
+              {createButtonLabel}
             </Button>
             <Tooltip title="Refresh">
               <span>
